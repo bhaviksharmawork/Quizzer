@@ -1,98 +1,340 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+// Single-file React Native screen that visually clones the provided design.
+// Drop this file into your Expo app (e.g. /app/(screens)/LiveQuizHomeScreen.tsx) and import it in your router.
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function LiveQuizHomeScreen() {
+  const router = useRouter();
+  const [pin, setPin] = useState<string[]>(['', '', '', '', '', '']);
+  const inputs = useRef<Array<TextInput | null>>(Array(6).fill(null));
 
-export default function HomeScreen() {
+  const categories = [
+    { id: '1', name: 'Science', emoji: '⚗️', color: '#7c3aed' },
+    { id: '2', name: 'History', emoji: '🧾', color: '#fb923c' },
+    { id: '3', name: 'Tech', emoji: '⚙️', color: '#06b6d4' },
+    { id: '4', name: 'Sports', emoji: '🏆', color: '#f97316' },
+  ];
+
+  const events = [
+    {
+      id: 'e1',
+      title: 'Retro Gaming Trivia',
+      start: 'Starts in 15 mins',
+      waiting: '1.2k Waiting',
+    },
+    {
+      id: 'e2',
+      title: 'World Geography Challenge',
+      start: 'Today, 8:00 PM',
+      waiting: '$500 Prize Pool',
+    },
+    {
+      id: 'e3',
+      title: 'Movie Buffs: 2000s',
+      start: 'Tomorrow, 6:00 PM',
+      waiting: '',
+    },
+  ];
+
+  function handlePinChange(text: string, index: number) {
+    if (text.length > 1) text = text.slice(-1);
+    const next = [...pin];
+    next[index] = text;
+    setPin(next);
+    if (text && index < inputs.current.length - 1) {
+      inputs.current[index + 1]?.focus();
+    }
+    if (!text && index > 0) {
+      // on backspace, focus previous
+    }
+  }
+
+  function joinGame() {
+    const code = pin.join('');
+    console.log('Join code:', code);
+    // replace with navigation / socket join
+    router.push('/room');
+
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <View style={styles.userRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>AJ</Text>
+            </View>
+            <View>
+              <Text style={styles.welcome}>Welcome back,</Text>
+              <Text style={styles.username}>Alexa Johnson</Text>
+            </View>
+          </View>
+          <View style={styles.bell}>
+            <Text style={{ fontSize: 18 }}>🔔</Text>
+          </View>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Join Card */}
+        <View style={styles.joinCard}>
+          <View style={styles.joinIcon}>
+            <Text style={{ fontSize: 20 }}>🎮</Text>
+          </View>
+          <Text style={styles.joinTitle}>Join a Live Game</Text>
+          <Text style={styles.joinSubtitle}>Enter the 6-digit PIN provided by the host</Text>
+
+          <View style={styles.pinRow}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <TextInput
+                key={i}
+                ref={(ref) => (inputs.current[i] = ref)}
+                value={pin[i]}
+                onChangeText={(t) => handlePinChange(t, i)}
+                style={styles.pinBox}
+                keyboardType="number-pad"
+                maxLength={1}
+                textAlign="center"
+                placeholder="•"
+                placeholderTextColor="#6b7280"
+              />
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.enterBtn} onPress={joinGame}>
+            <Text style={styles.enterBtnText}>Enter Game →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Trending Categories */}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Trending Categories</Text>
+          <Text style={styles.viewAll}>View All</Text>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
+          {categories.map((c) => (
+            <View key={c.id} style={[styles.categoryCard, { backgroundColor: '#0b1220' }]}> 
+              <View style={[styles.categoryIcon, { backgroundColor: c.color }]}> 
+                <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
+              </View>
+              <Text style={styles.categoryName}>{c.name}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Upcoming Events */}
+        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Upcoming Live Events</Text>
+        <View style={{ gap: 12 }}>
+          {events.map((ev) => (
+            <View key={ev.id} style={styles.eventCard}>
+              <View style={styles.eventLeft}>
+                <View style={styles.eventThumb}>
+                  <Text style={{ color: '#fff' }}>LIVE</Text>
+                </View>
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={styles.eventTitle}>{ev.title}</Text>
+                  <Text style={styles.eventMeta}>{ev.start}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.eventBell}>
+                <Text>🔔</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ height: 90 }} />
+      </ScrollView>
+
+      {/* Bottom Navigation + Floating Action */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>🏠</Text>
+          <Text style={styles.navLabel}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>🔍</Text>
+          <Text style={styles.navLabel}>Discover</Text>
+        </TouchableOpacity>
+
+        <View style={styles.fabContainer}>
+          <TouchableOpacity style={styles.fabButton}>
+            <Text style={styles.fabPlus}>+</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>🏆</Text>
+          <Text style={styles.navLabel}>Rank</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>👤</Text>
+          <Text style={styles.navLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safe: { flex: 1, backgroundColor: '#071025' },
+  container: {
+    padding: 18,
+    paddingBottom: 120,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0ea5a4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  avatarText: { color: '#001219', fontWeight: '700' },
+  welcome: { color: '#94a3b8', fontSize: 12 },
+  username: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  bell: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#0b1220',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  joinCard: {
+    backgroundColor: '#0b1220',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  joinIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#0b1220',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#0f172a',
+  },
+  joinTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 },
+  joinSubtitle: { color: '#94a3b8', fontSize: 12, marginBottom: 12 },
+  pinRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  pinBox: {
+    width: 44,
+    height: 54,
+    borderRadius: 8,
+    backgroundColor: '#021124',
+    borderWidth: 1,
+    borderColor: '#0f172a',
+    color: '#fff',
+    fontSize: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enterBtn: {
+    marginTop: 6,
+    backgroundColor: '#2b6cb0',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+  },
+  enterBtnText: { color: '#f8fafc', fontWeight: '700' },
+
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  viewAll: { color: '#60a5fa' },
+
+  categoryCard: {
+    width: 110,
+    height: 110,
+    borderRadius: 16,
+    padding: 12,
+    marginRight: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  categoryIcon: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryName: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  eventCard: {
+    backgroundColor: '#0b1220',
+    padding: 12,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  eventLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  eventThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  eventTitle: { color: '#fff', fontWeight: '700' },
+  eventMeta: { color: '#94a3b8', fontSize: 12, marginTop: 6 },
+  eventBell: { marginLeft: 12, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#061223' },
+
+  bottomBar: {
     position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 18,
+    height: 66,
+    backgroundColor: '#071425',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
+  navItem: { alignItems: 'center', justifyContent: 'center' },
+  navIcon: { fontSize: 18 },
+  navLabel: { color: '#94a3b8', fontSize: 11 },
+ fabContainer: {
+  position: 'relative',
+  top: -28,
+  alignSelf: 'center',
+},
+
+  fabButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#2b6cb0', alignItems: 'center', justifyContent: 'center' },
+  fabPlus: { color: '#fff', fontSize: 28, lineHeight: 28 },
 });
