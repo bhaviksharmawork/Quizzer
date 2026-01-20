@@ -7,37 +7,87 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { io, Socket } from 'socket.io-client';
 
 // Live Quiz Waiting Room Screen
 // Navigate to this screen after pressing "Enter Game"
 
 export default function LiveQuizRoomScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [timeLeft, setTimeLeft] = useState(10);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
+  const roomId = (params.roomId as string) || (params.id as string) || '111111';
+  const username = 'Alexa Johnson'; // Hardcoded for now
 
-  // Reset timer when component mounts
-  useEffect(() => {
-    setTimeLeft(10);
-  }, []);
+  console.log('Room screen - Room ID from params:', params.roomId);
+  console.log('Room screen - Using room ID:', roomId);
+
+  // Reset timer when screen comes into focus (when Enter Game is pressed)
+  useFocusEffect(
+    React.useCallback(() => {
+      setTimeLeft(10);
+      
+      // Connect to socket server
+      console.log('Room screen: Attempting to connect to socket server...');
+      const newSocket = io('http://10.0.2.2:3000'); // Android emulator localhost
+      setSocket(newSocket);
+      
+      newSocket.on('connect', () => {
+        console.log('Room screen: Connected to socket server');
+        console.log('Room screen: Attempting to join room:', roomId);
+        console.log('Room screen: Username:', username);
+        
+        // Join the room after connection is established
+        newSocket.emit('joinRoom', { roomId, username });
+      });
+      
+      newSocket.on('error', (error) => {
+        console.error('Room screen: Socket error:', error);
+        if (error === 'Room does not exist') {
+          console.log('Room screen: Room does not exist, showing error to user');
+          // You might want to show an alert or navigate back
+        }
+      });
+      
+      newSocket.on('roomState', (data) => {
+        console.log('Room screen: Room state received:', data);
+        setConnectedUsers(data.users || []);
+      });
+      
+      newSocket.on('userJoined', (data) => {
+        console.log('Room screen: User joined:', data);
+        setConnectedUsers(data.users || []);
+      });
+      
+      newSocket.on('userLeft', (data) => {
+        console.log('Room screen: User left:', data);
+        setConnectedUsers(data.users || []);
+      });
+      
+      return () => {
+        newSocket.disconnect();
+      };
+    }, [])
+  );
 
   useEffect(() => {
     if (timeLeft === 0) {
-      router.push('/quiz');
+      router.push({ pathname: '/quiz', params: { roomId } });
       return;
     }
-    const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [timeLeft, router]);
-  const players = [
-    { id: 'you', name: 'Alex', tag: 'YOU' },
-    { id: '1', name: 'Sarah' },
-    { id: '2', name: 'Mike' },
-    { id: '3', name: 'Jessica' },
-    { id: '4', name: 'Ryan' },
-    { id: '5', name: 'Emma' },
-    { id: '6', name: 'David' },
-  ];
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [timeLeft, router, roomId]);
+  const players = connectedUsers.map((user, index) => ({
+    id: index.toString(),
+    name: user,
+    tag: user === username ? 'YOU' : null
+  }));
 
 
   function back() {
@@ -52,7 +102,7 @@ export default function LiveQuizRoomScreen() {
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
           <View style={styles.codeBadge}>
-            <Text style={styles.codeText}>Code: 8392</Text>
+            <Text style={styles.codeText}>Code: {roomId}</Text>
           </View>
         </View>
 

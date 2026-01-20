@@ -62,9 +62,9 @@ export default function LiveQuizHomeScreen() {
   function joinGame() {
     const code = pin.join('');
     console.log('Join code:', code);
-    // replace with navigation / socket join
-    router.push('/room');
-
+    console.log('Navigating to room with roomId:', code);
+    // Navigate to room with the room code
+    router.push({ pathname: '/room', params: { roomId: code } });
   }
 
   return (
@@ -170,7 +170,7 @@ export default function LiveQuizHomeScreen() {
         </TouchableOpacity>
 
         <View style={styles.fabContainer}>
-          <TouchableOpacity style={styles.fabButton}>
+          <TouchableOpacity style={styles.fabButton} onPress={() => router.push('/addquiz')}>
             <Text style={styles.fabPlus}>+</Text>
           </TouchableOpacity>
         </View>

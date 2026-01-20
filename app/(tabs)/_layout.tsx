@@ -54,7 +54,19 @@ export default function TabLayout() {
         name="result"
         options={{
           title: 'Result',
-          tabBarIcon: ({ color, size }: TabBarIconProps) => <IconSymbol size={size} name="trophy.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol name={focused ? 'trophy' : 'trophy'} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="addquiz"
+        options={{
+          title: 'Add Quiz',
+          href: '/addquiz',
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol name={focused ? 'plus.circle' : 'plus.circle'} color={color} />
+          ),
         }}
       />
     </Tabs>
