@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -12,138 +12,211 @@ import { io, Socket } from 'socket.io-client';
 // Live Quiz Question Screen (Kahoot-style)
 
 export default function LiveQuizQuestionScreen() {
+  console.log('🚀 QUIZ SCREEN COMPONENT LOADED/RE-RENDERED');
   const router = useRouter();
+  
   const params = useLocalSearchParams();
+  const [latestRoomId, setLatestRoomId] = useState<string>('111111');
+  
   const [socket, setSocket] = useState<Socket | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(3);
   const [answers, setAnswers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previousRoomId, setPreviousRoomId] = useState<string>('');
   const questionStartTime = useRef<number>(Date.now());
-  const roomId = (params.roomId as string) || (params.id as string) || '111111'; // Get room ID from params
+  
+  // Use useFocusEffect to capture params when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 QUIZ SCREEN GAINED FOCUS');
+      console.log('Quiz screen - All params received:', params);
+      console.log('Quiz screen - params.roomId:', params.roomId);
+      console.log('Quiz screen - params.id:', params.id);
+      console.log('Quiz screen - Current questions length:', questions.length);
+      console.log('Quiz screen - Current loading state:', loading);
+      
+      // Only update room ID if we don't have quiz data yet
+      if (questions.length === 0 && loading) {
+        const newRoomId = (params.roomId as string) || (params.id as string) || '111111';
+        console.log('Quiz screen - New room ID from params:', newRoomId);
+        setLatestRoomId(newRoomId);
+      } else {
+        console.log('Quiz screen - Already have quiz data, not resetting room ID');
+      }
+    }, [params.roomId, params.id, questions.length, loading]) // Add dependencies to prevent unnecessary resets
+  );
+  
+  // Use the latest room ID captured from params
+  const roomId = latestRoomId || '111111';
 
-  console.log('Quiz screen - Room ID from params:', params.roomId);
   console.log('Quiz screen - Using room ID:', roomId);
+
+  // Reset quiz state when room changes
+  useEffect(() => {
+    console.log('🔄 ROOM CHANGE DETECTED: Old room:', previousRoomId, 'New room:', roomId);
+    
+    // Reset ALL quiz state when room changes (except timeLeft)
+    setQuestions([]);
+    setCurrentQuestionIndex(0);
+    setSelected(null);
+    setAnswers([]);
+    // Don't reset timeLeft here - let quiz data set it properly
+    setLoading(true);
+    setPreviousRoomId(roomId);
+    
+    console.log('🔄 QUIZ STATE RESET COMPLETE');
+  }, [roomId]);
 
   // Load quiz from server
   useEffect(() => {
-    console.log('Quiz screen: Attempting to connect to socket server...');
+    console.log('🔌 SOCKET EFFECT RUNNING for roomId:', roomId);
+    
+    // ALWAYS create a new socket connection for each room to prevent caching issues
+    if (socket) {
+      console.log('🔌 Disconnecting old socket for room change');
+      socket.disconnect();
+    }
+    
     const newSocket = io('http://10.0.2.2:3000', {
-      timeout: 5000,
+      timeout: 10000,
       reconnection: true,
-      reconnectionAttempts: 3,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1500,
     });
     
     setSocket(newSocket);
     
     newSocket.on('connect', () => {
-      console.log('Quiz screen: Connected to socket server');
-      console.log('Quiz screen: Requesting quiz for room:', roomId);
-      // Request quiz data for this room
+      console.log('🔌 Socket connected');
+      console.log('🔌 Emitting getQuiz for room:', roomId);
+      console.log('🔌 Room ID type:', typeof roomId);
+      console.log('🔌 Room ID value:', roomId);
+      
+      // Request quiz data for this room immediately
       newSocket.emit('getQuiz', { roomId });
+      
+      // Add a fallback timeout in case quiz data doesn't come through
+      setTimeout(() => {
+        if (loading) {
+          console.log('🔌 Quiz request timeout, retrying...');
+          newSocket.emit('getQuiz', { roomId });
+        }
+      }, 3000); // 3 seconds
     });
     
     newSocket.on('quizData', (data) => {
-      console.log('Quiz screen: Quiz data received:', data);
-      console.log('Quiz screen: Room ID:', data.roomId);
-      console.log('Quiz screen: Quiz data:', data.quiz);
+      console.log('🔍 QUIZ DATA RECEIVED EVENT');
+      console.log('🔍 Raw data:', JSON.stringify(data, null, 2));
+      console.log('🔍 Room ID:', data.roomId);
+      console.log('🔍 Quiz object:', data.quiz);
+      console.log('🔍 Questions array:', data.quiz?.questions);
+      console.log('🔍 Number of questions:', data.quiz?.questions?.length);
       
-      if (data.quiz) {
+      if (data.quiz && data.quiz.questions && data.quiz.questions.length > 0) {
+        console.log('✅ Quiz has valid questions, processing...');
         console.log('Quiz screen: Processing quiz data...');
+        const quizTimeLimit = data.quiz.timeLimit || 30; // Get quiz-level timeLimit
+        console.log('🔍 Quiz-level timeLimit:', quizTimeLimit);
+        
         // Convert server quiz format to our component format
         const formattedQuestions = data.quiz.questions.map((q: any, index: number) => {
-          console.log(`Quiz screen: Processing question ${index + 1}:`, q);
+          console.log(`📝 Processing question ${index + 1}:`, q);
+          // Handle both formats: answers (from addquiz) and options (from JSON)
+          const answers = q.answers || q.options || [];
+          const timeLimit = q.timeLimit || 20;
+          console.log(`📝 Question ${index + 1} timeLimit:`, timeLimit);
           return {
             id: index + 1,
             question: q.question,
-            options: q.answers.map((answer: string, i: number) => ({
-              id: String.fromCharCode(65 + i), // A, B, C, D
-              text: answer,
+            options: answers.map((answer: any, i: number) => ({
+              id: answer.id || String.fromCharCode(65 + i), // Handle both string id and index
+              text: answer.text || answer,
               color: i === 0 ? '#dbeafe' : i === 1 ? '#dcfce7' : i === 2 ? '#fef3c7' : '#fee2e2'
             })),
-            correctAnswer: String.fromCharCode(65 + q.correctIndex),
-            timeLimit: q.timeLimit
+            correctAnswer: q.correctAnswer || String.fromCharCode(65 + q.correctIndex),
+            timeLimit: timeLimit
           };
         });
         
-        console.log('Quiz screen: Formatted questions:', formattedQuestions);
+        console.log('✅ FORMATTED QUESTIONS COMPLETE');
+        console.log('🔍 Total formatted questions:', formattedQuestions.length);
+        console.log('🔍 First question:', formattedQuestions[0]);
+        console.log('🔍 Last question:', formattedQuestions[formattedQuestions.length - 1]);
+        
         setQuestions(formattedQuestions);
-        setTimeLeft(formattedQuestions[0]?.timeLimit || 3);
+        const firstQuestionTime = formattedQuestions[0]?.timeLimit || 30;
+        console.log('⏰ Setting initial timer to:', firstQuestionTime);
+        setTimeLeftWithDebug(firstQuestionTime);
+        setCurrentQuestionIndex(0);
+        setLoading(false);
+        console.log('✅ Quiz loading complete, all states updated');
       } else {
         console.log('Quiz screen: No quiz found for room:', roomId);
-        console.log('Quiz screen: Using fallback questions');
-        // Fallback to hardcoded questions
-        setQuestions([
-          {
-            id: 1,
-            question: "Which country is known as the Land of the Rising Sun?",
-            options: [
-              { id: 'A', text: 'Japan', color: '#dbeafe' },
-              { id: 'B', text: 'China', color: '#dcfce7' },
-              { id: 'C', text: 'South Korea', color: '#fef3c7' },
-              { id: 'D', text: 'Thailand', color: '#fee2e2' }
-            ],
-            correctAnswer: 'A',
-            timeLimit: 3
-          }
-        ]);
+        console.log('Quiz screen: No quiz data available');
+        // Don't set fallback questions - just keep loading state or show empty state
+        setLoading(false);
       }
-      setLoading(false);
     });
     
     newSocket.on('connect_error', (error) => {
-      console.error('Quiz screen: Socket connection error:', error);
+      console.error('🔌 Socket connection error:', error);
+      console.error('🔌 Server may not be running at http://10.0.2.2:3000');
       setLoading(false);
-      // Set fallback questions on connection error
-      setQuestions([
-        {
-          id: 1,
-          question: "Which country is known as the Land of the Rising Sun?",
-          options: [
-            { id: 'A', text: 'Japan', color: '#dbeafe' },
-            { id: 'B', text: 'China', color: '#dcfce7' },
-            { id: 'C', text: 'South Korea', color: '#fef3c7' },
-            { id: 'D', text: 'Thailand', color: '#fee2e2' }
-          ],
-          correctAnswer: 'A',
-          timeLimit: 3
-        }
-      ]);
+      // Don't set fallback questions on connection error - just show loading state
     });
     
     return () => {
+      // Remove all listeners before disconnecting
+      newSocket.off('quizData');
+      newSocket.off('connect');
+      newSocket.off('connect_error');
       newSocket.disconnect();
     };
-  }, []);
+  }, [roomId]);
+
+  // Add a custom setter to track timeLeft changes
+  const setTimeLeftWithDebug = (value: number) => {
+    console.log('⏰ SET_TIME_LEFT CALLED with value:', value);
+    setTimeLeft(value);
+  };
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [quizCompleted, setQuizCompleted] = useState(false);
 
-  // Reset quiz state when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      setCurrentQuestionIndex(0);
-      setTimeLeft(3);
-      setSelected(null);
-      setAnswers([]);
-      questionStartTime.current = Date.now();
-      return () => {};
-    }, [])
-  );
-
-  // Reset timer for each question
+  // Reset timer for each question (but not on initial quiz load or when option is selected)
   useEffect(() => {
-    if (questions.length > 0) {
-      setTimeLeft(questions[currentQuestionIndex]?.timeLimit || 3);
-      questionStartTime.current = Date.now();
+    if (questions.length > 0 && currentQuestionIndex < questions.length) {
+      const currentQuestion = questions[currentQuestionIndex];
+      if (currentQuestion) {
+        const timeLimit = currentQuestion?.timeLimit || 30;
+        console.log('⏰ TIMER EFFECT: Question', currentQuestionIndex + 1, 'timeLimit:', timeLimit);
+        console.log('⏰ TIMER EFFECT: Current timeLeft before setting:', timeLeft);
+        console.log('⏰ TIMER EFFECT: Selected option:', selected);
+        console.log('⏰ TIMER EFFECT: Setting timeLeft to:', timeLimit);
+        
+        // Only set timeLeft if it's not already set correctly AND no option is selected
+        if (timeLeft !== timeLimit && !selected) {
+          setTimeLeftWithDebug(timeLimit);
+        } else if (selected) {
+          console.log('⏰ TIMER EFFECT: Option selected, not resetting timer');
+        }
+        questionStartTime.current = Date.now();
+      }
     }
-  }, [currentQuestionIndex, questions]);
+  }, [currentQuestionIndex, questions, selected]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
     if (timeLeft === 0 && currentQuestion) {
+      console.log('⏰ Timer reached zero, processing answer for question:', currentQuestion.question);
+      console.log('⏰ Time left before processing:', timeLeft);
+      console.log('⏰ Current question index:', currentQuestionIndex);
+      console.log('⏰ Total questions:', questions.length);
+      console.log('⏰ Questions array:', questions);
+      
       // Calculate actual time taken
       const timeTaken = Math.round((Date.now() - questionStartTime.current) / 1000);
       const newAnswer = {
@@ -154,21 +227,33 @@ export default function LiveQuizQuestionScreen() {
       
       const updatedAnswers = [...answers, newAnswer];
       setAnswers(updatedAnswers);
+      console.log('📝 Answer recorded:', newAnswer);
+      console.log('📝 Updated answers array:', updatedAnswers);
 
       // Check if there are more questions
       if (currentQuestionIndex < questions.length - 1) {
+        console.log('➡️ Moving to next question, current:', currentQuestionIndex, 'next:', currentQuestionIndex + 1);
         setTimeout(() => {
           setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setTimeLeft(questions[currentQuestionIndex + 1]?.timeLimit || 3);
+          const nextTimeLimit = questions[currentQuestionIndex + 1]?.timeLimit || 3;
+          setTimeLeft(nextTimeLimit);
           setSelected(null);
           questionStartTime.current = Date.now(); // Reset timer for next question
+          console.log('⏰ Timer reset for next question, timeLeft:', nextTimeLimit);
         }, 0);
       } else {
-        // Quiz completed, log the answers JSON
-        console.log('Quiz completed! Answers JSON:', JSON.stringify(updatedAnswers, null, 2));
-        // Navigate to results screen
+        console.log('🏁 Quiz completed, navigating to results');
+        setQuizCompleted(true);
+        // Quiz completed, navigate to results screen with data
         setTimeout(() => {
-          router.push('/result');
+          router.push({
+            pathname: '/result',
+            params: {
+              answers: JSON.stringify(updatedAnswers),
+              questions: JSON.stringify(questions),
+              totalQuestions: questions.length.toString()
+            }
+          });
         }, 0);
       }
       return;
@@ -200,6 +285,13 @@ export default function LiveQuizQuestionScreen() {
           </View>
         ) : (
           <>
+            {console.log('🎯 RENDERING QUESTION:', {
+              currentIndex: currentQuestionIndex,
+              totalQuestions: questions.length,
+              question: currentQuestion?.question,
+              timeLeft: timeLeft,
+              timeLimit: currentQuestion?.timeLimit
+            })}
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={() => router.back()}>
@@ -224,12 +316,12 @@ export default function LiveQuizQuestionScreen() {
 
             {/* Question */}
             <Text style={styles.question}>
-              {currentQuestion.question}
+              {currentQuestion?.question}
             </Text>
 
             {/* Options */}
             <View style={styles.options}>
-              {currentQuestion.options?.map((opt: { id: string; text: string; color: string }) => (
+              {currentQuestion?.options?.map((opt: { id: string; text: string; color: string }) => (
                 <TouchableOpacity
                   key={opt.id}
                   style={[
@@ -237,7 +329,14 @@ export default function LiveQuizQuestionScreen() {
                     { backgroundColor: opt.color },
                     selected === opt.id && styles.optionSelected,
                   ]}
-                  onPress={() => setSelected(opt.id)}
+                  onPress={() => {
+                    console.log('🖱️ OPTION CLICKED:', opt.id);
+                    console.log('🖱️ Current questions length:', questions.length);
+                    console.log('🖱️ Current question:', currentQuestion);
+                    console.log('🖱️ About to call setSelected');
+                    setSelected(opt.id);
+                    console.log('🖱️ setSelected called with:', opt.id);
+                  }}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.optionKey}>{opt.id}</Text>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,12 +6,49 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Live Quiz Result / Completion Screen
 
 export default function LiveQuizResultScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const [score, setScore] = useState({ correct: 0, total: 0, percentage: 0 });
+  const [totalTime, setTotalTime] = useState(0);
+
+  useEffect(() => {
+    try {
+      const answersData = JSON.parse(params.answers as string || '[]');
+      const questionsData = JSON.parse(params.questions as string || '[]');
+      const totalQuestions = parseInt(params.totalQuestions as string || '0');
+
+      // Calculate correct answers
+      let correctCount = 0;
+      let totalTimeTaken = 0;
+
+      answersData.forEach((answer: any) => {
+        const question = questionsData.find((q: any) => q.id === answer.questionId);
+        if (question && answer.selectedAnswer === question.correctAnswer) {
+          correctCount++;
+        }
+        totalTimeTaken += answer.timeTaken || 0;
+      });
+
+      const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+      
+      setScore({
+        correct: correctCount,
+        total: totalQuestions,
+        percentage: percentage
+      });
+      
+      setTotalTime(totalTimeTaken);
+    } catch (error) {
+      console.error('Error parsing quiz data:', error);
+      // Fallback to default values
+      setScore({ correct: 0, total: 0, percentage: 0 });
+    }
+  }, [params.answers, params.questions, params.totalQuestions]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -30,8 +67,13 @@ export default function LiveQuizResultScreen() {
         {/* Rank Card */}
         <View style={styles.rankCard}>
           <Text style={styles.rankLabel}>YOUR RANK</Text>
-          <Text style={styles.rankValue}>4th Place</Text>
-          <Text style={styles.rankMeta}>👥 124 others played</Text>
+          <Text style={styles.rankValue}>
+            {score.percentage >= 80 ? '1st Place' : 
+             score.percentage >= 60 ? '2nd Place' : 
+             score.percentage >= 40 ? '3rd Place' : 
+             score.percentage >= 20 ? '4th Place' : '5th Place'}
+          </Text>
+          <Text style={styles.rankMeta}>👥 {Math.floor(Math.random() * 200) + 50} others played</Text>
         </View>
 
         {/* Stats */}
@@ -39,29 +81,29 @@ export default function LiveQuizResultScreen() {
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>⭐</Text>
             <Text style={styles.statLabel}>Total Score</Text>
-            <Text style={styles.statValue}>1,240 pts</Text>
+            <Text style={styles.statValue}>{score.correct * 100} pts</Text>
           </View>
 
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>🎯</Text>
             <Text style={styles.statLabel}>Accuracy</Text>
-            <Text style={styles.statValue}>85%</Text>
+            <Text style={styles.statValue}>{score.percentage}%</Text>
           </View>
         </View>
 
         {/* Performance */}
         <View style={styles.performanceCard}>
           <Text style={styles.performanceTitle}>PERFORMANCE BREAKDOWN</Text>
-          <Text style={styles.performanceSub}>15 Questions</Text>
+          <Text style={styles.performanceSub}>{score.total} Questions</Text>
 
           <View style={styles.progressBar}>
-            <View style={[styles.correctBar, { width: '80%' }]} />
-            <View style={[styles.incorrectBar, { width: '20%' }]} />
+            <View style={[styles.correctBar, { width: `${score.percentage}%` }]} />
+            <View style={[styles.incorrectBar, { width: `${100 - score.percentage}%` }]} />
           </View>
 
           <View style={styles.performanceLegend}>
-            <Text style={styles.correctText}>● CORRECT 12</Text>
-            <Text style={styles.incorrectText}>● INCORRECT 3</Text>
+            <Text style={styles.correctText}>● CORRECT {score.correct}</Text>
+            <Text style={styles.incorrectText}>● INCORRECT {score.total - score.correct}</Text>
           </View>
         </View>
 

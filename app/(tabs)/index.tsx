@@ -10,11 +10,15 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useUser } from '@/contexts/UserContext';
 // Single-file React Native screen that visually clones the provided design.
 // Drop this file into your Expo app (e.g. /app/(screens)/LiveQuizHomeScreen.tsx) and import it in your router.
 
 export default function LiveQuizHomeScreen() {
   const router = useRouter();
+  const { username } = useUser();
+  console.log('🏠 HOME SCREEN - Username from context:', username);
+  console.log('🏠 HOME SCREEN - Username type:', typeof username);
   const [pin, setPin] = useState<string[]>(['', '', '', '', '', '']);
   const inputs = useRef<Array<TextInput | null>>(Array(6).fill(null));
 
@@ -61,9 +65,10 @@ export default function LiveQuizHomeScreen() {
 
   function joinGame() {
     const code = pin.join('');
-    console.log('Join code:', code);
-    console.log('Navigating to room with roomId:', code);
-    // Navigate to room with the room code
+    console.log('🏠 HOME SCREEN: Join code:', code);
+    console.log('🏠 HOME SCREEN: Navigating to room with roomId:', code);
+    console.log('🏠 HOME SCREEN: Navigation path: room');
+    // Navigate to room with the room code using relative path within tabs
     router.push({ pathname: '/room', params: { roomId: code } });
   }
 
@@ -78,7 +83,7 @@ export default function LiveQuizHomeScreen() {
             </View>
             <View>
               <Text style={styles.welcome}>Welcome back,</Text>
-              <Text style={styles.username}>Alexa Johnson</Text>
+              <Text style={styles.username}>{username || 'Guest'}</Text>
             </View>
           </View>
           <View style={styles.bell}>
@@ -98,7 +103,9 @@ export default function LiveQuizHomeScreen() {
             {Array.from({ length: 6 }).map((_, i) => (
               <TextInput
                 key={i}
-                ref={(ref) => (inputs.current[i] = ref)}
+                ref={(ref) => {
+                  inputs.current[i] = ref;
+                }}
                 value={pin[i]}
                 onChangeText={(t) => handlePinChange(t, i)}
                 style={styles.pinBox}

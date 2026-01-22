@@ -1,0 +1,516 @@
+{
+  "quizzes": [
+    {
+      "id": "general_knowledge_1",
+      "title": "General Knowledge Challenge",
+      "category": "General Knowledge",
+      "difficulty": "Medium",
+      "timeLimit": 30,
+      "questions": [
+        {
+          "id": 1,
+          "question": "Which country is known as the Land of the Rising Sun?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Japan"
+            },
+            {
+              "id": "B",
+              "text": "China"
+            },
+            {
+              "id": "C",
+              "text": "South Korea"
+            },
+            {
+              "id": "D",
+              "text": "Thailand"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        },
+        {
+          "id": 2,
+          "question": "What is the capital of Australia?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Sydney"
+            },
+            {
+              "id": "B",
+              "text": "Melbourne"
+            },
+            {
+              "id": "C",
+              "text": "Canberra"
+            },
+            {
+              "id": "D",
+              "text": "Brisbane"
+            }
+          ],
+          "correctAnswer": "C",
+          "timeLimit": 10
+        },
+        {
+          "id": 3,
+          "question": "Which planet is known as the Red Planet?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Venus"
+            },
+            {
+              "id": "B",
+              "text": "Mars"
+            },
+            {
+              "id": "C",
+              "text": "Jupiter"
+            },
+            {
+              "id": "D",
+              "text": "Saturn"
+            }
+          ],
+          "correctAnswer": "B",
+          "timeLimit": 10
+        },
+        {
+          "id": 4,
+          "question": "Who painted the Mona Lisa?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Vincent van Gogh"
+            },
+            {
+              "id": "B",
+              "text": "Pablo Picasso"
+            },
+            {
+              "id": "C",
+              "text": "Leonardo da Vinci"
+            },
+            {
+              "id": "D",
+              "text": "Michelangelo"
+            }
+          ],
+          "correctAnswer": "C",
+          "timeLimit": 10
+        },
+        {
+          "id": 5,
+          "question": "What is the largest ocean on Earth?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Atlantic Ocean"
+            },
+            {
+              "id": "B",
+              "text": "Indian Ocean"
+            },
+            {
+              "id": "C",
+              "text": "Arctic Ocean"
+            },
+            {
+              "id": "D",
+              "text": "Pacific Ocean"
+            }
+          ],
+          "correctAnswer": "D",
+          "timeLimit": 10
+        }
+      ]
+    },
+    {
+      "id": "science_1",
+      "title": "Science Quiz",
+      "category": "Science",
+      "difficulty": "Hard",
+      "timeLimit": 45,
+      "questions": [
+        {
+          "id": 1,
+          "question": "What is the chemical symbol for gold?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Go"
+            },
+            {
+              "id": "B",
+              "text": "Gd"
+            },
+            {
+              "id": "C",
+              "text": "Au"
+            },
+            {
+              "id": "D",
+              "text": "Ag"
+            }
+          ],
+          "correctAnswer": "C",
+          "timeLimit": 15
+        },
+        {
+          "id": 2,
+          "question": "What is the speed of light in vacuum?",
+          "options": [
+            {
+              "id": "A",
+              "text": "299,792,458 m/s"
+            },
+            {
+              "id": "B",
+              "text": "300,000,000 m/s"
+            },
+            {
+              "id": "C",
+              "text": "299,000,000 m/s"
+            },
+            {
+              "id": "D",
+              "text": "301,000,000 m/s"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 15
+        },
+        {
+          "id": 3,
+          "question": "What is the powerhouse of the cell?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Nucleus"
+            },
+            {
+              "id": "B",
+              "text": "Mitochondria"
+            },
+            {
+              "id": "C",
+              "text": "Ribosome"
+            },
+            {
+              "id": "D",
+              "text": "Endoplasmic reticulum"
+            }
+          ],
+          "correctAnswer": "B",
+          "timeLimit": 15
+        }
+      ]
+    },
+    {
+      "id": "history_1",
+      "title": "World History Quiz",
+      "category": "History",
+      "difficulty": "Medium",
+      "timeLimit": 40,
+      "questions": [
+        {
+          "id": 1,
+          "question": "In which year did World War II end?",
+          "options": [
+            {
+              "id": "A",
+              "text": "1943"
+            },
+            {
+              "id": "B",
+              "text": "1944"
+            },
+            {
+              "id": "C",
+              "text": "1945"
+            },
+            {
+              "id": "D",
+              "text": "1946"
+            }
+          ],
+          "correctAnswer": "C",
+          "timeLimit": 12
+        },
+        {
+          "id": 2,
+          "question": "Who was the first President of the United States?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Thomas Jefferson"
+            },
+            {
+              "id": "B",
+              "text": "George Washington"
+            },
+            {
+              "id": "C",
+              "text": "John Adams"
+            },
+            {
+              "id": "D",
+              "text": "Benjamin Franklin"
+            }
+          ],
+          "correctAnswer": "B",
+          "timeLimit": 12
+        },
+        {
+          "id": 3,
+          "question": "Which ancient wonder of the world still stands today?",
+          "options": [
+            {
+              "id": "A",
+              "text": "Colossus of Rhodes"
+            },
+            {
+              "id": "B",
+              "text": "Great Pyramid of Giza"
+            },
+            {
+              "id": "C",
+              "text": "Hanging Gardens of Babylon"
+            },
+            {
+              "id": "D",
+              "text": "Lighthouse of Alexandria"
+            }
+          ],
+          "correctAnswer": "B",
+          "timeLimit": 12
+        },
+        {
+          "id": 4,
+          "question": "In which year did Christopher Columbus reach the Americas?",
+          "options": [
+            {
+              "id": "A",
+              "text": "1490"
+            },
+            {
+              "id": "B",
+              "text": "1491"
+            },
+            {
+              "id": "C",
+              "text": "1492"
+            },
+            {
+              "id": "D",
+              "text": "1493"
+            }
+          ],
+          "correctAnswer": "C",
+          "timeLimit": 12
+        }
+      ]
+    },
+    {
+      "id": "896851",
+      "title": "Bets ",
+      "category": "Custom Quiz",
+      "difficulty": "Medium",
+      "timeLimit": 30,
+      "questions": [
+        {
+          "question": "yes",
+          "options": [
+            {
+              "id": "A",
+              "text": "Answer 1"
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        },
+        {
+          "question": "no",
+          "options": [
+            {
+              "id": "A",
+              "text": "Answer 1"
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        }
+      ]
+    },
+    {
+      "id": "981218",
+      "title": "second",
+      "category": "Custom Quiz",
+      "difficulty": "Medium",
+      "timeLimit": 30,
+      "questions": [
+        {
+          "question": "Doosra quiz",
+          "options": [
+            {
+              "id": "A",
+              "text": "Correct answer "
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        },
+        {
+          "question": "Second question ",
+          "options": [
+            {
+              "id": "A",
+              "text": "Firse sahi "
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        }
+      ]
+    },
+    {
+      "id": "222222",
+      "title": "trying again",
+      "category": "Custom Quiz",
+      "difficulty": "Medium",
+      "timeLimit": 30,
+      "questions": [
+        {
+          "question": "hello",
+          "options": [
+            {
+              "id": "A",
+              "text": "Answer 1"
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 20
+        },
+        {
+          "question": "hi",
+          "options": [
+            {
+              "id": "A",
+              "text": "Answer 1"
+            },
+            {
+              "id": "B",
+              "text": "Answer 2"
+            },
+            {
+              "id": "C",
+              "text": "Answer 3"
+            },
+            {
+              "id": "D",
+              "text": "Answer 4"
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 20
+        }
+      ]
+    },
+    {
+      "id": "000000",
+      "title": "The best quiz ever ",
+      "category": "Custom Quiz",
+      "difficulty": "Medium",
+      "timeLimit": 30,
+      "questions": [
+        {
+          "question": "What company do you work at ",
+          "options": [
+            {
+              "id": "A",
+              "text": "Dealermatix"
+            },
+            {
+              "id": "B",
+              "text": "amazon"
+            },
+            {
+              "id": "C",
+              "text": "I don't know "
+            },
+            {
+              "id": "D",
+              "text": "Unemployed "
+            }
+          ],
+          "correctAnswer": "A",
+          "timeLimit": 10
+        }
+      ]
+    }
+  ]
+}

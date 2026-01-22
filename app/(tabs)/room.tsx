@@ -9,26 +9,37 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
+import { useUser } from '@/contexts/UserContext';
 
 // Live Quiz Waiting Room Screen
 // Navigate to this screen after pressing "Enter Game"
 
 export default function LiveQuizRoomScreen() {
+  console.log('🎯 ROOM SCREEN COMPONENT LOADED/RE-RENDERED');
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { username } = useUser();
+  console.log('🎯 ROOM SCREEN - params received:', params);
+  
   const [timeLeft, setTimeLeft] = useState(10);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
   const roomId = (params.roomId as string) || (params.id as string) || '111111';
-  const username = 'Alexa Johnson'; // Hardcoded for now
 
-  console.log('Room screen - Room ID from params:', params.roomId);
-  console.log('Room screen - Using room ID:', roomId);
+  console.log('🎯 ROOM SCREEN - Room ID from params:', params.roomId);
+  console.log('🎯 ROOM SCREEN - Using room ID:', roomId);
 
-  // Reset timer when screen comes into focus (when Enter Game is pressed)
+  // Reset state when screen comes into focus (when Enter Game is pressed)
   useFocusEffect(
     React.useCallback(() => {
+      console.log('🔄 Room screen focus effect triggered for roomId:', roomId);
+      console.log('🔄 Room screen - Current timeLeft before reset:', timeLeft);
+      
+      // Reset timer to 10 seconds when entering room
       setTimeLeft(10);
+      console.log('🔄 Room screen - Set timeLeft to 10');
+      
+      setConnectedUsers([]);
       
       // Connect to socket server
       console.log('Room screen: Attempting to connect to socket server...');
@@ -43,7 +54,7 @@ export default function LiveQuizRoomScreen() {
         // Join the room after connection is established
         newSocket.emit('joinRoom', { roomId, username });
       });
-      
+
       newSocket.on('error', (error) => {
         console.error('Room screen: Socket error:', error);
         if (error === 'Room does not exist') {
@@ -51,7 +62,7 @@ export default function LiveQuizRoomScreen() {
           // You might want to show an alert or navigate back
         }
       });
-      
+
       newSocket.on('roomState', (data) => {
         console.log('Room screen: Room state received:', data);
         setConnectedUsers(data.users || []);
@@ -68,21 +79,35 @@ export default function LiveQuizRoomScreen() {
       });
       
       return () => {
+        newSocket.off('error');
+        newSocket.off('roomState');
+        newSocket.off('userJoined');
+        newSocket.off('userLeft');
         newSocket.disconnect();
       };
-    }, [])
-  );
-
+    }, [roomId])
+      );
   useEffect(() => {
+    console.log('⏱️ ROOM TIMER EFFECT: timeLeft =', timeLeft, ', roomId =', roomId);
+    console.log('⏱️ ROOM TIMER EFFECT: Should countdown from 10 to 0');
     if (timeLeft === 0) {
+      console.log('⏱️ ROOM TIMER REACHED ZERO: Navigating to quiz with roomId:', roomId);
       router.push({ pathname: '/quiz', params: { roomId } });
       return;
     }
     if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+      console.log('⏱️ Timer counting down:', timeLeft);
+      const timer = setTimeout(() => {
+        const newTimeLeft = timeLeft - 1;
+        console.log('⏱️ Timer countdown: from', timeLeft, 'to', newTimeLeft);
+        setTimeLeft(newTimeLeft);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [timeLeft, router, roomId]);
+  console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
+  console.log('🎯 ROOM SCREEN - Should show waiting room with timer:', timeLeft, 'seconds');
+  
   const players = connectedUsers.map((user, index) => ({
     id: index.toString(),
     name: user,
@@ -93,6 +118,10 @@ export default function LiveQuizRoomScreen() {
   function back() {
     router.back();
   }
+  
+  console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
+  console.log('🎯 ROOM SCREEN - Should show waiting room if timeLeft > 0');
+  
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>

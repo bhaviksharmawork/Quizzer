@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,6 +14,22 @@ const io = new Server(server, {
   }
 });
 
+// Load quizzes from JSON file
+let quizzesData;
+try {
+  const quizzesPath = path.join(__dirname, 'quizzes.json');
+  const quizzesFile = fs.readFileSync(quizzesPath, 'utf8');
+  quizzesData = JSON.parse(quizzesFile);
+  console.log('✅ Quizzes loaded from quizzes.json');
+  console.log('📊 Total quizzes found:', quizzesData.quizzes.length);
+  quizzesData.quizzes.forEach((quiz, index) => {
+    console.log(`📝 Quiz ${index + 1}: ${quiz.title} (ID: ${quiz.id})`);
+  });
+} catch (error) {
+  console.error('❌ Error loading quizzes.json:', error);
+  quizzesData = { quizzes: [] };
+}
+
 // Store room data and quizzes
 const rooms = {
   '111111': {
@@ -22,6 +40,39 @@ const rooms = {
 };
 
 const quizzes = {}; // Store quizzes by room ID
+
+// Serve quizzes data via REST API
+app.get('/api/quizzes', (req, res) => {
+  res.json(quizzesData);
+});
+
+// Initialize with all quizzes from JSON file
+if (quizzesData.quizzes.length > 0) {
+  quizzesData.quizzes.forEach((quiz) => {
+    const roomId = quiz.id;
+    quizzes[roomId] = quiz;
+    
+    // Create room if it doesn't exist
+    if (!rooms[roomId]) {
+      rooms[roomId] = {
+        id: roomId,
+        users: [],
+        createdAt: new Date(),
+        quiz: quiz
+      };
+    } else {
+      rooms[roomId].quiz = quiz;
+    }
+    
+    console.log(`✅ Quiz loaded for room ${roomId}: ${quiz.title}`);
+  });
+  
+  // Also keep default quiz for room 111111
+  const defaultQuiz = quizzesData.quizzes[0];
+  quizzes['111111'] = defaultQuiz;
+  rooms['111111'].quiz = defaultQuiz;
+  console.log('✅ Default quiz loaded for room 111111:', defaultQuiz.title);
+}
 
 io.on('connection', (socket) => {
   console.log('=== NEW USER CONNECTED ===');
@@ -103,6 +154,53 @@ io.on('connection', (socket) => {
     
     // Store the quiz
     quizzes[roomId] = quizData;
+    
+    // Persist quiz to JSON file
+    try {
+      console.log('🔄 Starting quiz persistence for room:', roomId);
+      // Read existing quizzes
+      const quizzesPath = path.join(__dirname, 'quizzes.json');
+      let existingData = { quizzes: [] };
+      
+      if (fs.existsSync(quizzesPath)) {
+        const existingFile = fs.readFileSync(quizzesPath, 'utf8');
+        existingData = JSON.parse(existingFile);
+        console.log('📖 Read existing quizzes:', existingData.quizzes.length, 'quizzes');
+      }
+      
+      // Add new quiz if it doesn't exist
+      const existingIndex = existingData.quizzes.findIndex(q => q.id === roomId);
+      const newQuiz = {
+        id: roomId,
+        title: quizData.title,
+        category: quizData.category || 'Custom Quiz',
+        difficulty: quizData.difficulty || 'Medium',
+        timeLimit: quizData.timeLimit || 30,
+        questions: quizData.questions.map((q) => ({
+          id: q.id,
+          question: q.question,
+          options: q.answers.map((answer, i) => ({
+            id: String.fromCharCode(65 + i),
+            text: answer
+          })),
+          correctAnswer: String.fromCharCode(65 + q.correctIndex),
+          timeLimit: q.timeLimit || 20
+        }))
+      };
+      
+      if (existingIndex >= 0) {
+        existingData.quizzes[existingIndex] = newQuiz;
+      } else {
+        existingData.quizzes.push(newQuiz);
+      }
+      
+      // Write back to file
+      fs.writeFileSync(quizzesPath, JSON.stringify(existingData, null, 2));
+      console.log(`✅ Quiz persisted to quizzes.json for room ${roomId}`);
+      console.log('💾 Total quizzes in file:', existingData.quizzes.length);
+    } catch (error) {
+      console.error('❌ Error persisting quiz to JSON:', error);
+    }
     
     console.log(`✅ Quiz saved for room ${roomId}`);
     console.log('Quiz title:', quizData.title);

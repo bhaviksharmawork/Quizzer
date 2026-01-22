@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -19,6 +19,8 @@ export default function AddQuizQuestionScreen() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [roomId, setRoomId] = useState('');
+  const [existingQuizzes, setExistingQuizzes] = useState<any[]>([]);
+  const [showExistingQuizzes, setShowExistingQuizzes] = useState(false);
   const [questions, setQuestions] = useState([
     {
       id: '1',
@@ -29,6 +31,21 @@ export default function AddQuizQuestionScreen() {
     }
   ]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Load existing quizzes from server
+  useEffect(() => {
+    fetchExistingQuizzes();
+  }, []);
+
+  const fetchExistingQuizzes = async () => {
+    try {
+      const response = await fetch('http://10.0.2.2:3000/api/quizzes');
+      const data = await response.json();
+      setExistingQuizzes(data.quizzes || []);
+    } catch (error) {
+      console.error('Error fetching quizzes:', error);
+    }
+  };
 
   // Connect to socket server
   React.useEffect(() => {
@@ -96,6 +113,19 @@ export default function AddQuizQuestionScreen() {
       setQuestions(updatedQuestions);
       setCurrentQuestionIndex(Math.min(currentQuestionIndex, updatedQuestions.length - 1));
     }
+  };
+
+  const useExistingQuiz = (quiz: any) => {
+    setQuizTitle(quiz.title);
+    setQuestions(quiz.questions.map((q: any, index: number) => ({
+      id: String(index + 1),
+      question: q.question,
+      answers: q.options.map((opt: any) => opt.text),
+      correctIndex: q.options.findIndex((opt: any) => opt.id === q.correctAnswer),
+      timeLimit: q.timeLimit || 20
+    })));
+    setShowExistingQuizzes(false);
+    Alert.alert('Quiz Loaded', `Loaded "${quiz.title}" with ${quiz.questions.length} questions`);
   };
 
   const handleSave = () => {
@@ -185,6 +215,40 @@ export default function AddQuizQuestionScreen() {
           value={roomId}
           onChangeText={setRoomId}
         />
+
+        {/* Existing Quizzes */}
+        <View style={styles.existingQuizzesSection}>
+          <TouchableOpacity 
+            style={styles.existingQuizzesHeader}
+            onPress={() => setShowExistingQuizzes(!showExistingQuizzes)}
+          >
+            <Text style={styles.sectionLabel}>EXISTING QUIZZES ({existingQuizzes.length})</Text>
+            <Text style={styles.toggleIcon}>{showExistingQuizzes ? '▼' : '▶'}</Text>
+          </TouchableOpacity>
+          
+          {showExistingQuizzes && (
+            <View style={styles.existingQuizzesList}>
+              {existingQuizzes.map((quiz, index) => (
+                <TouchableOpacity
+                  key={quiz.id}
+                  style={styles.quizItem}
+                  onPress={() => useExistingQuiz(quiz)}
+                >
+                  <View style={styles.quizInfo}>
+                    <Text style={styles.quizTitle}>{quiz.title}</Text>
+                    <Text style={styles.quizMeta}>
+                      {quiz.category} • {quiz.difficulty} • {quiz.questions.length} questions
+                    </Text>
+                  </View>
+                  <Text style={styles.useQuizBtn}>Use</Text>
+                </TouchableOpacity>
+              ))}
+              {existingQuizzes.length === 0 && (
+                <Text style={styles.noQuizzesText}>No existing quizzes found</Text>
+              )}
+            </View>
+          )}
+        </View>
 
         {/* Question Navigation */}
         <View style={styles.questionNav}>
@@ -473,4 +537,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteQuestionText: { color: '#fff', fontWeight: '600' },
+
+  // Existing quizzes styles
+  existingQuizzesSection: {
+    marginBottom: 20,
+  },
+  existingQuizzesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleIcon: {
+    color: '#cbd5f5',
+    fontSize: 16,
+  },
+  existingQuizzesList: {
+    marginTop: 10,
+  },
+  quizItem: {
+    backgroundColor: '#1e1b2e',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quizInfo: {
+    flex: 1,
+  },
+  quizTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  quizMeta: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  useQuizBtn: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noQuizzesText: {
+    color: '#64748b',
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 10,
+  },
 });
