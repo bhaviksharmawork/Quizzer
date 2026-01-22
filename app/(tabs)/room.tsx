@@ -20,8 +20,9 @@ export default function LiveQuizRoomScreen() {
   const params = useLocalSearchParams();
   const { username } = useUser();
   console.log('🎯 ROOM SCREEN - params received:', params);
-  
+
   const [timeLeft, setTimeLeft] = useState(10);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
   const roomId = (params.roomId as string) || (params.id as string) || '111111';
@@ -34,23 +35,27 @@ export default function LiveQuizRoomScreen() {
     React.useCallback(() => {
       console.log('🔄 Room screen focus effect triggered for roomId:', roomId);
       console.log('🔄 Room screen - Current timeLeft before reset:', timeLeft);
-      
+
       // Reset timer to 10 seconds when entering room
       setTimeLeft(10);
-      console.log('🔄 Room screen - Set timeLeft to 10');
-      
+      setHasInitialized(true);
+      console.log('🔄 Room screen - Set timeLeft to 10, hasInitialized = true');
+
       setConnectedUsers([]);
-      
+
       // Connect to socket server
       console.log('Room screen: Attempting to connect to socket server...');
-      const newSocket = io('http://10.0.2.2:3000'); // Android emulator localhost
+      const newSocket = io('https://quizzer-paov.onrender.com', {
+        transports: ['websocket', 'polling'],
+        timeout: 10000
+      });
       setSocket(newSocket);
-      
+
       newSocket.on('connect', () => {
         console.log('Room screen: Connected to socket server');
         console.log('Room screen: Attempting to join room:', roomId);
         console.log('Room screen: Username:', username);
-        
+
         // Join the room after connection is established
         newSocket.emit('joinRoom', { roomId, username });
       });
@@ -67,17 +72,17 @@ export default function LiveQuizRoomScreen() {
         console.log('Room screen: Room state received:', data);
         setConnectedUsers(data.users || []);
       });
-      
+
       newSocket.on('userJoined', (data) => {
         console.log('Room screen: User joined:', data);
         setConnectedUsers(data.users || []);
       });
-      
+
       newSocket.on('userLeft', (data) => {
         console.log('Room screen: User left:', data);
         setConnectedUsers(data.users || []);
       });
-      
+
       return () => {
         newSocket.off('error');
         newSocket.off('roomState');
@@ -86,12 +91,21 @@ export default function LiveQuizRoomScreen() {
         newSocket.disconnect();
       };
     }, [roomId])
-      );
+  );
   useEffect(() => {
-    console.log('⏱️ ROOM TIMER EFFECT: timeLeft =', timeLeft, ', roomId =', roomId);
+    console.log('⏱️ ROOM TIMER EFFECT: timeLeft =', timeLeft, ', roomId =', roomId, ', hasInitialized =', hasInitialized);
     console.log('⏱️ ROOM TIMER EFFECT: Should countdown from 10 to 0');
+
+    // Don't do anything until the screen has been properly initialized
+    if (!hasInitialized) {
+      console.log('⏱️ ROOM TIMER EFFECT: Not initialized yet, waiting for focus effect');
+      return;
+    }
+
     if (timeLeft === 0) {
       console.log('⏱️ ROOM TIMER REACHED ZERO: Navigating to quiz with roomId:', roomId);
+      // Reset hasInitialized so next visit will wait for focus effect
+      setHasInitialized(false);
       router.push({ pathname: '/quiz', params: { roomId } });
       return;
     }
@@ -104,10 +118,10 @@ export default function LiveQuizRoomScreen() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [timeLeft, router, roomId]);
+  }, [timeLeft, router, roomId, hasInitialized]);
   console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
   console.log('🎯 ROOM SCREEN - Should show waiting room with timer:', timeLeft, 'seconds');
-  
+
   const players = connectedUsers.map((user, index) => ({
     id: index.toString(),
     name: user,
@@ -118,10 +132,10 @@ export default function LiveQuizRoomScreen() {
   function back() {
     router.back();
   }
-  
+
   console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
   console.log('🎯 ROOM SCREEN - Should show waiting room if timeLeft > 0');
-  
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>

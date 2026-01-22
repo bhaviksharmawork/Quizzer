@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--require=./node-init.js expo start",
+    "start-all": "concurrently \"npm run server\" \"npm start\"",
+    "server": "node server.js",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "cross-env NODE_OPTIONS=--require=./node-init.js expo start --android",
     "ios": "cross-env NODE_OPTIONS=--require=./node-init.js expo start --ios",
@@ -43,6 +45,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",

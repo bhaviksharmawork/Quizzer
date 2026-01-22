@@ -14,19 +14,19 @@ import { io, Socket } from 'socket.io-client';
 export default function LiveQuizQuestionScreen() {
   console.log('🚀 QUIZ SCREEN COMPONENT LOADED/RE-RENDERED');
   const router = useRouter();
-  
+
   const params = useLocalSearchParams();
   const [latestRoomId, setLatestRoomId] = useState<string>('111111');
-  
+
   const [socket, setSocket] = useState<Socket | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(0); // Start at 0, will be set when quiz loads
   const [answers, setAnswers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [previousRoomId, setPreviousRoomId] = useState<string>('');
   const questionStartTime = useRef<number>(Date.now());
-  
+
   // Use useFocusEffect to capture params when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -34,20 +34,25 @@ export default function LiveQuizQuestionScreen() {
       console.log('Quiz screen - All params received:', params);
       console.log('Quiz screen - params.roomId:', params.roomId);
       console.log('Quiz screen - params.id:', params.id);
-      console.log('Quiz screen - Current questions length:', questions.length);
-      console.log('Quiz screen - Current loading state:', loading);
-      
-      // Only update room ID if we don't have quiz data yet
-      if (questions.length === 0 && loading) {
-        const newRoomId = (params.roomId as string) || (params.id as string) || '111111';
-        console.log('Quiz screen - New room ID from params:', newRoomId);
-        setLatestRoomId(newRoomId);
-      } else {
-        console.log('Quiz screen - Already have quiz data, not resetting room ID');
-      }
-    }, [params.roomId, params.id, questions.length, loading]) // Add dependencies to prevent unnecessary resets
+
+      // Always reset state when screen gains focus (new quiz session)
+      const newRoomId = (params.roomId as string) || (params.id as string) || '111111';
+      console.log('Quiz screen - New room ID from params:', newRoomId);
+
+      // Reset all quiz state for fresh start
+      setQuestions([]);
+      setCurrentQuestionIndex(0);
+      setSelected(null);
+      setAnswers([]);
+      setTimeLeft(0);
+      setLoading(true);
+      setQuizCompleted(false);
+      setLatestRoomId(newRoomId);
+
+      console.log('📱 QUIZ SCREEN - State reset complete for room:', newRoomId);
+    }, [params.roomId, params.id])
   );
-  
+
   // Use the latest room ID captured from params
   const roomId = latestRoomId || '111111';
 
@@ -56,7 +61,7 @@ export default function LiveQuizQuestionScreen() {
   // Reset quiz state when room changes
   useEffect(() => {
     console.log('🔄 ROOM CHANGE DETECTED: Old room:', previousRoomId, 'New room:', roomId);
-    
+
     // Reset ALL quiz state when room changes (except timeLeft)
     setQuestions([]);
     setCurrentQuestionIndex(0);
@@ -65,38 +70,37 @@ export default function LiveQuizQuestionScreen() {
     // Don't reset timeLeft here - let quiz data set it properly
     setLoading(true);
     setPreviousRoomId(roomId);
-    
+
     console.log('🔄 QUIZ STATE RESET COMPLETE');
   }, [roomId]);
 
   // Load quiz from server
   useEffect(() => {
     console.log('🔌 SOCKET EFFECT RUNNING for roomId:', roomId);
-    
+
     // ALWAYS create a new socket connection for each room to prevent caching issues
     if (socket) {
       console.log('🔌 Disconnecting old socket for room change');
       socket.disconnect();
     }
-    
-    const newSocket = io('http://10.0.2.2:3000', {
+
+    const newSocket = io('https://quizzer-paov.onrender.com', {
+      transports: ['websocket', 'polling'],
       timeout: 10000,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1500,
+      forceNew: true
     });
-    
+
     setSocket(newSocket);
-    
+
     newSocket.on('connect', () => {
       console.log('🔌 Socket connected');
       console.log('🔌 Emitting getQuiz for room:', roomId);
       console.log('🔌 Room ID type:', typeof roomId);
       console.log('🔌 Room ID value:', roomId);
-      
+
       // Request quiz data for this room immediately
       newSocket.emit('getQuiz', { roomId });
-      
+
       // Add a fallback timeout in case quiz data doesn't come through
       setTimeout(() => {
         if (loading) {
@@ -105,7 +109,7 @@ export default function LiveQuizQuestionScreen() {
         }
       }, 3000); // 3 seconds
     });
-    
+
     newSocket.on('quizData', (data) => {
       console.log('🔍 QUIZ DATA RECEIVED EVENT');
       console.log('🔍 Raw data:', JSON.stringify(data, null, 2));
@@ -113,13 +117,13 @@ export default function LiveQuizQuestionScreen() {
       console.log('🔍 Quiz object:', data.quiz);
       console.log('🔍 Questions array:', data.quiz?.questions);
       console.log('🔍 Number of questions:', data.quiz?.questions?.length);
-      
+
       if (data.quiz && data.quiz.questions && data.quiz.questions.length > 0) {
         console.log('✅ Quiz has valid questions, processing...');
         console.log('Quiz screen: Processing quiz data...');
         const quizTimeLimit = data.quiz.timeLimit || 30; // Get quiz-level timeLimit
         console.log('🔍 Quiz-level timeLimit:', quizTimeLimit);
-        
+
         // Convert server quiz format to our component format
         const formattedQuestions = data.quiz.questions.map((q: any, index: number) => {
           console.log(`📝 Processing question ${index + 1}:`, q);
@@ -139,12 +143,12 @@ export default function LiveQuizQuestionScreen() {
             timeLimit: timeLimit
           };
         });
-        
+
         console.log('✅ FORMATTED QUESTIONS COMPLETE');
         console.log('🔍 Total formatted questions:', formattedQuestions.length);
         console.log('🔍 First question:', formattedQuestions[0]);
         console.log('🔍 Last question:', formattedQuestions[formattedQuestions.length - 1]);
-        
+
         setQuestions(formattedQuestions);
         const firstQuestionTime = formattedQuestions[0]?.timeLimit || 30;
         console.log('⏰ Setting initial timer to:', firstQuestionTime);
@@ -159,14 +163,14 @@ export default function LiveQuizQuestionScreen() {
         setLoading(false);
       }
     });
-    
+
     newSocket.on('connect_error', (error) => {
       console.error('🔌 Socket connection error:', error);
-      console.error('🔌 Server may not be running at http://10.0.2.2:3000');
+      console.error('🔌 Server may not be running at https://quizzer-paov.onrender.com');
       setLoading(false);
       // Don't set fallback questions on connection error - just show loading state
     });
-    
+
     return () => {
       // Remove all listeners before disconnecting
       newSocket.off('quizData');
@@ -195,7 +199,7 @@ export default function LiveQuizQuestionScreen() {
         console.log('⏰ TIMER EFFECT: Current timeLeft before setting:', timeLeft);
         console.log('⏰ TIMER EFFECT: Selected option:', selected);
         console.log('⏰ TIMER EFFECT: Setting timeLeft to:', timeLimit);
-        
+
         // Only set timeLeft if it's not already set correctly AND no option is selected
         if (timeLeft !== timeLimit && !selected) {
           setTimeLeftWithDebug(timeLimit);
@@ -210,13 +214,18 @@ export default function LiveQuizQuestionScreen() {
   const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
+    // Don't run timer during loading or when no questions
+    if (loading || questions.length === 0 || !currentQuestion) {
+      return;
+    }
+
     if (timeLeft === 0 && currentQuestion) {
       console.log('⏰ Timer reached zero, processing answer for question:', currentQuestion.question);
       console.log('⏰ Time left before processing:', timeLeft);
       console.log('⏰ Current question index:', currentQuestionIndex);
       console.log('⏰ Total questions:', questions.length);
       console.log('⏰ Questions array:', questions);
-      
+
       // Calculate actual time taken
       const timeTaken = Math.round((Date.now() - questionStartTime.current) / 1000);
       const newAnswer = {
@@ -224,7 +233,7 @@ export default function LiveQuizQuestionScreen() {
         selectedAnswer: selected || 'no_answer',
         timeTaken: timeTaken
       };
-      
+
       const updatedAnswers = [...answers, newAnswer];
       setAnswers(updatedAnswers);
       console.log('📝 Answer recorded:', newAnswer);
@@ -260,7 +269,7 @@ export default function LiveQuizQuestionScreen() {
     }
     const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(timer);
-  }, [timeLeft, selected, currentQuestionIndex, currentQuestion, router, questions]);
+  }, [timeLeft, selected, currentQuestionIndex, currentQuestion, router, questions, loading]);
 
   return (
     <SafeAreaView style={styles.safe}>
