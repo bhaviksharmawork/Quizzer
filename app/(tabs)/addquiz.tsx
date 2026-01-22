@@ -39,7 +39,7 @@ export default function AddQuizQuestionScreen() {
 
   const fetchExistingQuizzes = async () => {
     try {
-      const response = await fetch('http://10.0.2.2:3000/api/quizzes');
+      const response = await fetch('https://quizzer-paov.onrender.com/api/quizzes');
       const data = await response.json();
       setExistingQuizzes(data.quizzes || []);
     } catch (error) {
@@ -50,35 +50,35 @@ export default function AddQuizQuestionScreen() {
   // Connect to socket server
   React.useEffect(() => {
     console.log('Attempting to connect to socket server...');
-    const newSocket = io('http://10.0.2.2:3000', {
+    const newSocket = io('https://quizzer-paov.onrender.com', {
       timeout: 5000,
       reconnection: true,
       reconnectionAttempts: 3,
       reconnectionDelay: 1000,
     });
-    
+
     setSocket(newSocket);
-    
+
     newSocket.on('connect', () => {
       console.log('Connected to socket server for quiz creation');
     });
-    
+
     newSocket.on('quizSaved', (data) => {
       console.log('Quiz saved successfully:', data);
       Alert.alert('Success', `Quiz saved for room ${data.roomId}!`, [
         { text: 'OK', onPress: () => router.back() }
       ]);
     });
-    
+
     newSocket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       Alert.alert('Connection Error', 'Failed to connect to server. Please make sure the server is running.');
     });
-    
+
     newSocket.on('disconnect', () => {
       console.log('Disconnected from socket server');
     });
-    
+
     return () => {
       newSocket.disconnect();
     };
@@ -130,18 +130,18 @@ export default function AddQuizQuestionScreen() {
 
   const handleSave = () => {
     console.log('Save button pressed');
-    
+
     // Validate quiz data
     if (!quizTitle.trim()) {
       Alert.alert('Error', 'Please enter a quiz title');
       return;
     }
-    
+
     if (!roomId.trim()) {
       Alert.alert('Error', 'Please enter a room ID');
       return;
     }
-    
+
     // Validate each question
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
@@ -149,7 +149,7 @@ export default function AddQuizQuestionScreen() {
         Alert.alert('Error', `Question ${i + 1} is empty`);
         return;
       }
-      
+
       for (let j = 0; j < q.answers.length; j++) {
         if (!q.answers[j].trim()) {
           Alert.alert('Error', `Answer ${j + 1} in Question ${i + 1} is empty`);
@@ -157,7 +157,7 @@ export default function AddQuizQuestionScreen() {
         }
       }
     }
-    
+
     const quizData = {
       title: quizTitle,
       roomId,
@@ -168,10 +168,10 @@ export default function AddQuizQuestionScreen() {
         timeLimit: q.timeLimit
       }))
     };
-    
+
     console.log('Attempting to save quiz:', quizData);
     console.log('Socket connected:', socket?.connected);
-    
+
     // Save quiz to server
     if (socket && socket.connected) {
       console.log('Emitting saveQuiz event...');
@@ -218,14 +218,14 @@ export default function AddQuizQuestionScreen() {
 
         {/* Existing Quizzes */}
         <View style={styles.existingQuizzesSection}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.existingQuizzesHeader}
             onPress={() => setShowExistingQuizzes(!showExistingQuizzes)}
           >
             <Text style={styles.sectionLabel}>EXISTING QUIZZES ({existingQuizzes.length})</Text>
             <Text style={styles.toggleIcon}>{showExistingQuizzes ? '▼' : '▶'}</Text>
           </TouchableOpacity>
-          
+
           {showExistingQuizzes && (
             <View style={styles.existingQuizzesList}>
               {existingQuizzes.map((quiz, index) => (
@@ -254,16 +254,16 @@ export default function AddQuizQuestionScreen() {
         <View style={styles.questionNav}>
           <Text style={styles.sectionLabel}>QUESTIONS ({questions.length})</Text>
           <View style={styles.navButtons}>
-            <TouchableOpacity 
-              style={styles.navBtn} 
+            <TouchableOpacity
+              style={styles.navBtn}
               onPress={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
               disabled={currentQuestionIndex === 0}
             >
               <Text style={styles.navBtnText}>←</Text>
             </TouchableOpacity>
             <Text style={styles.questionIndicator}>Question {currentQuestionIndex + 1}</Text>
-            <TouchableOpacity 
-              style={styles.navBtn} 
+            <TouchableOpacity
+              style={styles.navBtn}
               onPress={() => setCurrentQuestionIndex(Math.min(questions.length - 1, currentQuestionIndex + 1))}
               disabled={currentQuestionIndex === questions.length - 1}
             >
@@ -315,11 +315,11 @@ export default function AddQuizQuestionScreen() {
           >
             <View style={styles.answerLeft}>
               <View style={[
-                styles.answerIcon, 
-                i === 0 ? styles.icon0 : 
-                i === 1 ? styles.icon1 : 
-                i === 2 ? styles.icon2 : 
-                styles.icon3
+                styles.answerIcon,
+                i === 0 ? styles.icon0 :
+                  i === 1 ? styles.icon1 :
+                    i === 2 ? styles.icon2 :
+                      styles.icon3
               ]} />
               <TextInput
                 style={styles.answerInput}
@@ -512,10 +512,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   navBtnText: { color: '#cbd5f5', fontSize: 16 },
-  questionIndicator: { 
-    color: '#fff', 
-    fontSize: 14, 
-    fontWeight: '600' 
+  questionIndicator: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
   },
   actionButtons: {
     flexDirection: 'row',
