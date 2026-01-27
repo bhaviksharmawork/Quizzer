@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Live Quiz Result / Completion Screen
@@ -35,13 +35,13 @@ export default function LiveQuizResultScreen() {
       });
 
       const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
-      
+
       setScore({
         correct: correctCount,
         total: totalQuestions,
         percentage: percentage
       });
-      
+
       setTotalTime(totalTimeTaken);
     } catch (error) {
       console.error('Error parsing quiz data:', error);
@@ -68,10 +68,10 @@ export default function LiveQuizResultScreen() {
         <View style={styles.rankCard}>
           <Text style={styles.rankLabel}>YOUR RANK</Text>
           <Text style={styles.rankValue}>
-            {score.percentage >= 80 ? '1st Place' : 
-             score.percentage >= 60 ? '2nd Place' : 
-             score.percentage >= 40 ? '3rd Place' : 
-             score.percentage >= 20 ? '4th Place' : '5th Place'}
+            {score.percentage >= 80 ? '1st Place' :
+              score.percentage >= 60 ? '2nd Place' :
+                score.percentage >= 40 ? '3rd Place' :
+                  score.percentage >= 20 ? '4th Place' : '5th Place'}
           </Text>
           <Text style={styles.rankMeta}>👥 {Math.floor(Math.random() * 200) + 50} others played</Text>
         </View>

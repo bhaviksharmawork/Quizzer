@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
 
@@ -86,8 +86,11 @@ export default function LiveQuizQuestionScreen() {
 
     const newSocket = io('https://quizzer-paov.onrender.com', {
       transports: ['websocket', 'polling'],
-      timeout: 10000,
-      forceNew: true
+      timeout: 20000,
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000
     });
 
     setSocket(newSocket);

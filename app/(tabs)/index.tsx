@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
 // Single-file React Native screen that visually clones the provided design.
@@ -131,8 +131,8 @@ export default function LiveQuizHomeScreen() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
           {categories.map((c) => (
-            <View key={c.id} style={[styles.categoryCard, { backgroundColor: '#0b1220' }]}> 
-              <View style={[styles.categoryIcon, { backgroundColor: c.color }]}> 
+            <View key={c.id} style={[styles.categoryCard, { backgroundColor: '#0b1220' }]}>
+              <View style={[styles.categoryIcon, { backgroundColor: c.color }]}>
                 <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
               </View>
               <Text style={styles.categoryName}>{c.name}</Text>
@@ -336,11 +336,11 @@ const styles = StyleSheet.create({
   navItem: { alignItems: 'center', justifyContent: 'center' },
   navIcon: { fontSize: 18 },
   navLabel: { color: '#94a3b8', fontSize: 11 },
- fabContainer: {
-  position: 'relative',
-  top: -28,
-  alignSelf: 'center',
-},
+  fabContainer: {
+    position: 'relative',
+    top: -28,
+    alignSelf: 'center',
+  },
 
   fabButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#2b6cb0', alignItems: 'center', justifyContent: 'center' },
   fabPlus: { color: '#fff', fontSize: 28, lineHeight: 28 },

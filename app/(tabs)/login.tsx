@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,11 +25,11 @@ export default function UsernameLoginScreen() {
     }
 
     setLoading(true);
-    
+
     try {
       // Save username to AsyncStorage for persistence
       await AsyncStorage.setItem('username', username.trim());
-      
+
       // Navigate to home page (replace to prevent going back to login)
       router.replace('/(tabs)');
     } catch (error) {
