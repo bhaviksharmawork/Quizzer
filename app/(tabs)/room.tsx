@@ -25,6 +25,7 @@ export default function LiveQuizRoomScreen() {
   const [hasInitialized, setHasInitialized] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
+  const [quizTitle, setQuizTitle] = useState<string>('Loading...');
   const roomId = (params.roomId as string) || (params.id as string) || '111111';
 
   console.log('🎯 ROOM SCREEN - Room ID from params:', params.roomId);
@@ -71,6 +72,18 @@ export default function LiveQuizRoomScreen() {
       newSocket.on('roomState', (data) => {
         console.log('Room screen: Room state received:', data);
         setConnectedUsers(data.users || []);
+        if (data.quizTitle) {
+          setQuizTitle(data.quizTitle);
+        }
+      });
+
+      // Also request quiz details to get the title if not in roomState
+      newSocket.emit('getQuiz', { roomId });
+
+      newSocket.on('quizData', (data) => {
+        if (data && data.quiz) {
+          setQuizTitle(data.quiz.title);
+        }
       });
 
       newSocket.on('userJoined', (data) => {
@@ -88,6 +101,7 @@ export default function LiveQuizRoomScreen() {
         newSocket.off('roomState');
         newSocket.off('userJoined');
         newSocket.off('userLeft');
+        newSocket.off('quizData');
         newSocket.disconnect();
       };
     }, [roomId])
@@ -150,7 +164,7 @@ export default function LiveQuizRoomScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Global Geography</Text>
+        <Text style={styles.title}>{quizTitle}</Text>
         <Text style={styles.subtitle}>Hosted by @QuizMaster</Text>
 
         {/* Status */}

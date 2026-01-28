@@ -26,6 +26,7 @@ export default function LiveQuizQuestionScreen() {
   const [loading, setLoading] = useState(true);
   const [previousRoomId, setPreviousRoomId] = useState<string>('');
   const questionStartTime = useRef<number>(Date.now());
+  const quizLoadedRef = useRef<boolean>(false); // Track if quiz has been loaded to prevent duplicate processing
 
   // Use useFocusEffect to capture params when screen comes into focus
   useFocusEffect(
@@ -48,6 +49,7 @@ export default function LiveQuizQuestionScreen() {
       setLoading(true);
       setQuizCompleted(false);
       setLatestRoomId(newRoomId);
+      quizLoadedRef.current = false; // Reset so new quiz can be loaded
 
       console.log('📱 QUIZ SCREEN - State reset complete for room:', newRoomId);
     }, [params.roomId, params.id])
@@ -70,6 +72,7 @@ export default function LiveQuizQuestionScreen() {
     // Don't reset timeLeft here - let quiz data set it properly
     setLoading(true);
     setPreviousRoomId(roomId);
+    quizLoadedRef.current = false; // Reset so new quiz can be loaded
 
     console.log('🔄 QUIZ STATE RESET COMPLETE');
   }, [roomId]);
@@ -77,6 +80,14 @@ export default function LiveQuizQuestionScreen() {
   // Load quiz from server
   useEffect(() => {
     console.log('🔌 SOCKET EFFECT RUNNING for roomId:', roomId);
+    console.log('🔌 Loading state:', loading);
+    console.log('🔌 quizLoadedRef.current:', quizLoadedRef.current);
+
+    // Only connect if we're still loading (haven't loaded quiz yet)
+    if (!loading || quizLoadedRef.current) {
+      console.log('🔌 Skipping socket connection - quiz already loaded or not in loading state');
+      return;
+    }
 
     // ALWAYS create a new socket connection for each room to prevent caching issues
     if (socket) {
@@ -106,7 +117,7 @@ export default function LiveQuizQuestionScreen() {
 
       // Add a fallback timeout in case quiz data doesn't come through
       setTimeout(() => {
-        if (loading) {
+        if (!quizLoadedRef.current) {
           console.log('🔌 Quiz request timeout, retrying...');
           newSocket.emit('getQuiz', { roomId });
         }
@@ -120,6 +131,14 @@ export default function LiveQuizQuestionScreen() {
       console.log('🔍 Quiz object:', data.quiz);
       console.log('🔍 Questions array:', data.quiz?.questions);
       console.log('🔍 Number of questions:', data.quiz?.questions?.length);
+
+      // IMPORTANT: Only process if we haven't already loaded questions
+      // This prevents timer reset when quiz data is received again
+      // Use ref to avoid stale closure issues
+      if (quizLoadedRef.current) {
+        console.log('🔍 Quiz already loaded, ignoring duplicate quizData event');
+        return;
+      }
 
       if (data.quiz && data.quiz.questions && data.quiz.questions.length > 0) {
         console.log('✅ Quiz has valid questions, processing...');
@@ -158,6 +177,7 @@ export default function LiveQuizQuestionScreen() {
         setTimeLeftWithDebug(firstQuestionTime);
         setCurrentQuestionIndex(0);
         setLoading(false);
+        quizLoadedRef.current = true; // Mark quiz as loaded
         console.log('✅ Quiz loading complete, all states updated');
       } else {
         console.log('Quiz screen: No quiz found for room:', roomId);
@@ -181,7 +201,7 @@ export default function LiveQuizQuestionScreen() {
       newSocket.off('connect_error');
       newSocket.disconnect();
     };
-  }, [roomId]);
+  }, [roomId, loading]);
 
   // Add a custom setter to track timeLeft changes
   const setTimeLeftWithDebug = (value: number) => {
@@ -192,27 +212,21 @@ export default function LiveQuizQuestionScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
 
-  // Reset timer for each question (but not on initial quiz load or when option is selected)
+  // Reset timer for each question - only when question index changes
   useEffect(() => {
     if (questions.length > 0 && currentQuestionIndex < questions.length) {
       const currentQuestion = questions[currentQuestionIndex];
       if (currentQuestion) {
         const timeLimit = currentQuestion?.timeLimit || 30;
         console.log('⏰ TIMER EFFECT: Question', currentQuestionIndex + 1, 'timeLimit:', timeLimit);
-        console.log('⏰ TIMER EFFECT: Current timeLeft before setting:', timeLeft);
-        console.log('⏰ TIMER EFFECT: Selected option:', selected);
         console.log('⏰ TIMER EFFECT: Setting timeLeft to:', timeLimit);
 
-        // Only set timeLeft if it's not already set correctly AND no option is selected
-        if (timeLeft !== timeLimit && !selected) {
-          setTimeLeftWithDebug(timeLimit);
-        } else if (selected) {
-          console.log('⏰ TIMER EFFECT: Option selected, not resetting timer');
-        }
+        // Set timer for the new question
+        setTimeLeftWithDebug(timeLimit);
         questionStartTime.current = Date.now();
       }
     }
-  }, [currentQuestionIndex, questions, selected]);
+  }, [currentQuestionIndex, questions]); // Removed 'selected' - timer should only reset on question change
 
   const currentQuestion = questions[currentQuestionIndex];
 

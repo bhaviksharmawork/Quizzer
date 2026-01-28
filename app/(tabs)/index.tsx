@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,21 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
+
 // Single-file React Native screen that visually clones the provided design.
 // Drop this file into your Expo app (e.g. /app/(screens)/LiveQuizHomeScreen.tsx) and import it in your router.
+
+// Type for quiz data
+interface Quiz {
+  id: string;
+  title: string;
+  category: string;
+  difficulty: string;
+  timeLimit: number;
+  questions: any[];
+}
 
 export default function LiveQuizHomeScreen() {
   const router = useRouter();
@@ -22,32 +33,36 @@ export default function LiveQuizHomeScreen() {
   const [pin, setPin] = useState<string[]>(['', '', '', '', '', '']);
   const inputs = useRef<Array<TextInput | null>>(Array(6).fill(null));
 
+  // Fetch quizzes from remote server
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
+
+  // Fetch quizzes when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchQuizzes = async () => {
+        try {
+          setLoadingQuizzes(true);
+          const response = await fetch('https://quizzer-paov.onrender.com/api/quizzes');
+          const data = await response.json();
+          setQuizzes(data.quizzes || []);
+          console.log('🏠 HOME SCREEN - Fetched quizzes:', data.quizzes?.length || 0);
+        } catch (error) {
+          console.error('Error fetching quizzes:', error);
+          setQuizzes([]);
+        } finally {
+          setLoadingQuizzes(false);
+        }
+      };
+      fetchQuizzes();
+    }, [])
+  );
+
   const categories = [
     { id: '1', name: 'Science', emoji: '⚗️', color: '#7c3aed' },
     { id: '2', name: 'History', emoji: '🧾', color: '#fb923c' },
     { id: '3', name: 'Tech', emoji: '⚙️', color: '#06b6d4' },
     { id: '4', name: 'Sports', emoji: '🏆', color: '#f97316' },
-  ];
-
-  const events = [
-    {
-      id: 'e1',
-      title: 'Retro Gaming Trivia',
-      start: 'Starts in 15 mins',
-      waiting: '1.2k Waiting',
-    },
-    {
-      id: 'e2',
-      title: 'World Geography Challenge',
-      start: 'Today, 8:00 PM',
-      waiting: '$500 Prize Pool',
-    },
-    {
-      id: 'e3',
-      title: 'Movie Buffs: 2000s',
-      start: 'Tomorrow, 6:00 PM',
-      waiting: '',
-    },
   ];
 
   function handlePinChange(text: string, index: number) {
@@ -140,25 +155,30 @@ export default function LiveQuizHomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Upcoming Events */}
-        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Upcoming Live Events</Text>
+        {/* Available Quizzes */}
+        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Available Quizzes</Text>
         <View style={{ gap: 12 }}>
-          {events.map((ev) => (
-            <View key={ev.id} style={styles.eventCard}>
+          {quizzes.map((quiz) => (
+            <TouchableOpacity
+              key={quiz.id}
+              style={styles.eventCard}
+              onPress={() => router.push({ pathname: '/room', params: { roomId: quiz.id } })}
+            >
               <View style={styles.eventLeft}>
-                <View style={styles.eventThumb}>
-                  <Text style={{ color: '#fff' }}>LIVE</Text>
+                <View style={styles.quizCodeBadge}>
+                  <Text style={styles.quizCodeText}>{quiz.id}</Text>
                 </View>
                 <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={styles.eventTitle}>{ev.title}</Text>
-                  <Text style={styles.eventMeta}>{ev.start}</Text>
+                  <Text style={styles.eventTitle}>{quiz.title}</Text>
+                  <Text style={styles.eventMeta}>{quiz.category} • {quiz.difficulty}</Text>
+                  <Text style={styles.quizQuestionCount}>{quiz.questions.length} Questions</Text>
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.eventBell}>
-                <Text>🔔</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.joinQuizBtn}>
+                <Text style={styles.joinQuizBtnText}>Join →</Text>
+              </View>
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -186,7 +206,7 @@ export default function LiveQuizHomeScreen() {
           <Text style={styles.navIcon}>🏆</Text>
           <Text style={styles.navLabel}>Rank</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/profile')}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
@@ -316,6 +336,40 @@ const styles = StyleSheet.create({
   eventTitle: { color: '#fff', fontWeight: '700' },
   eventMeta: { color: '#94a3b8', fontSize: 12, marginTop: 6 },
   eventBell: { marginLeft: 12, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#061223' },
+
+  // Quiz code badge styles
+  quizCodeBadge: {
+    minWidth: 70,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#1e3a5f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  quizCodeText: {
+    color: '#60a5fa',
+    fontWeight: '700',
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  quizQuestionCount: {
+    color: '#64748b',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  joinQuizBtn: {
+    backgroundColor: '#2b6cb0',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  joinQuizBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
 
   bottomBar: {
     position: 'absolute',

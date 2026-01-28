@@ -9,17 +9,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUser } from '@/contexts/UserContext';
 
 // Username-only Login / Join Screen
 
 export default function UsernameLoginScreen() {
-  const [username, setUsername] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { setUsername } = useUser();
 
   const handleLogin = async () => {
-    if (!username.trim()) {
+    if (!usernameInput.trim()) {
       Alert.alert('Error', 'Please enter your username');
       return;
     }
@@ -27,8 +28,8 @@ export default function UsernameLoginScreen() {
     setLoading(true);
 
     try {
-      // Save username to AsyncStorage for persistence
-      await AsyncStorage.setItem('username', username.trim());
+      // Save username using UserContext (which also persists to AsyncStorage)
+      await setUsername(usernameInput.trim());
 
       // Navigate to home page (replace to prevent going back to login)
       router.replace('/(tabs)');
@@ -59,8 +60,8 @@ export default function UsernameLoginScreen() {
             style={styles.input}
             placeholder="Username..."
             placeholderTextColor="#64748b"
-            value={username}
-            onChangeText={setUsername}
+            value={usernameInput}
+            onChangeText={setUsernameInput}
             editable={!loading}
             maxLength={20}
             autoCapitalize="words"
@@ -69,9 +70,9 @@ export default function UsernameLoginScreen() {
           <TouchableOpacity
             style={[
               styles.continueBtn,
-              (!username || loading) && styles.continueDisabled,
+              (!usernameInput || loading) && styles.continueDisabled,
             ]}
-            disabled={!username || loading}
+            disabled={!usernameInput || loading}
             onPress={handleLogin}
           >
             <Text style={styles.continueText}>
