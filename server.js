@@ -13,8 +13,8 @@ const io = new Server(server, {
   }
 });
 
-// MongoDB connection string
-const MONGODB_URI = 'mongodb+srv://bhaviksharmawork_db_user:WO8soWgZBXa7gp0A@cluster0.yrrz06q.mongodb.net/?appName=Cluster0';
+// MongoDB connection string - includes database name
+const MONGODB_URI = 'mongodb+srv://bhaviksharmawork_db_user:WO8soWgZBXa7gp0A@cluster0.yrrz06q.mongodb.net/quizzer?retryWrites=true&w=majority&appName=Cluster0';
 const DB_NAME = 'quizzer';
 const QUIZZES_COLLECTION = 'quizzes';
 
@@ -27,8 +27,15 @@ const rooms = {};
 // Connect to MongoDB
 async function connectToMongoDB() {
   try {
-    console.log('� Connecting to MongoDB...');
-    const client = new MongoClient(MONGODB_URI);
+    console.log('🔌 Connecting to MongoDB...');
+    const client = new MongoClient(MONGODB_URI, {
+      // SSL/TLS options to fix connection issues
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
     await client.connect();
     db = client.db(DB_NAME);
     quizzesCollection = db.collection(QUIZZES_COLLECTION);
