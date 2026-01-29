@@ -24,6 +24,9 @@ let quizzesCollection;
 // Store room data in memory (active sessions)
 const rooms = {};
 
+// Store leaderboard data per room
+const leaderboards = {};
+
 // Connect to MongoDB
 async function connectToMongoDB() {
   try {
@@ -271,6 +274,85 @@ io.on('connection', (socket) => {
     }
 
     console.log('=== GET QUIZ COMPLETE ===\n');
+  });
+
+  // Handle score submission from quiz completion
+  socket.on('submitScore', (data) => {
+    console.log('\n=== SUBMIT SCORE EVENT RECEIVED ===');
+    console.log('Score data:', data);
+
+    const { roomId, username, score, correctAnswers, totalQuestions, totalTime } = data;
+
+    // Initialize leaderboard for room if doesn't exist
+    if (!leaderboards[roomId]) {
+      leaderboards[roomId] = [];
+    }
+
+    // Check if user already submitted (update their score)
+    const existingIndex = leaderboards[roomId].findIndex(entry => entry.username === username);
+
+    const scoreEntry = {
+      username,
+      score,
+      correctAnswers,
+      totalQuestions,
+      totalTime,
+      percentage: totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0,
+      submittedAt: new Date()
+    };
+
+    if (existingIndex !== -1) {
+      // Update existing entry if new score is higher
+      if (score > leaderboards[roomId][existingIndex].score) {
+        leaderboards[roomId][existingIndex] = scoreEntry;
+      }
+    } else {
+      leaderboards[roomId].push(scoreEntry);
+    }
+
+    // Sort leaderboard by score (descending), then by time (ascending)
+    leaderboards[roomId].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.totalTime - b.totalTime; // Faster time wins on tie
+    });
+
+    console.log(`✅ Score submitted for ${username} in room ${roomId}`);
+    console.log(`Leaderboard now has ${leaderboards[roomId].length} entries`);
+
+    // Send updated leaderboard to all users in the room
+    io.to(roomId).emit('leaderboardUpdate', {
+      roomId,
+      leaderboard: leaderboards[roomId],
+      totalPlayers: leaderboards[roomId].length
+    });
+
+    // Also send directly to the submitting user with their rank
+    const userRank = leaderboards[roomId].findIndex(entry => entry.username === username) + 1;
+    socket.emit('yourRank', {
+      rank: userRank,
+      totalPlayers: leaderboards[roomId].length,
+      leaderboard: leaderboards[roomId].slice(0, 10) // Top 10
+    });
+
+    console.log('=== SUBMIT SCORE COMPLETE ===\n');
+  });
+
+  // Get current leaderboard for a room
+  socket.on('getLeaderboard', (data) => {
+    console.log('\n=== GET LEADERBOARD EVENT RECEIVED ===');
+    const { roomId, username } = data;
+
+    const leaderboard = leaderboards[roomId] || [];
+    const userRank = username ? leaderboard.findIndex(entry => entry.username === username) + 1 : 0;
+
+    socket.emit('leaderboardData', {
+      roomId,
+      leaderboard: leaderboard.slice(0, 10), // Top 10
+      totalPlayers: leaderboard.length,
+      yourRank: userRank > 0 ? userRank : null
+    });
+
+    console.log('=== GET LEADERBOARD COMPLETE ===\n');
   });
 
   socket.on('disconnect', () => {

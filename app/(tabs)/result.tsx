@@ -4,26 +4,37 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUser } from '@/contexts/UserContext';
+import { io, Socket } from 'socket.io-client';
 
 export default function LiveQuizResultScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { isDarkMode, colors } = useTheme();
+    const { username } = useUser();
     const [score, setScore] = useState({ correct: 0, total: 0, percentage: 0 });
     const [totalTime, setTotalTime] = useState(0);
+    const [rank, setRank] = useState<number | null>(null);
+    const [totalPlayers, setTotalPlayers] = useState(0);
+    const [leaderboard, setLeaderboard] = useState<any[]>([]);
+    const [socket, setSocket] = useState<Socket | null>(null);
+
+    const roomId = params.roomId as string || '111111';
 
     useEffect(() => {
+        let correctCount = 0;
+        let totalTimeTaken = 0;
+        let totalQuestions = 0;
+
         try {
             const answersData = JSON.parse(params.answers as string || '[]');
             const questionsData = JSON.parse(params.questions as string || '[]');
-            const totalQuestions = parseInt(params.totalQuestions as string || '0');
-
-            let correctCount = 0;
-            let totalTimeTaken = 0;
+            totalQuestions = parseInt(params.totalQuestions as string || '0');
 
             answersData.forEach((answer: any) => {
                 const question = questionsData.find((q: any) => q.id === answer.questionId);
@@ -46,7 +57,72 @@ export default function LiveQuizResultScreen() {
             console.error('Error parsing quiz data:', error);
             setScore({ correct: 0, total: 0, percentage: 0 });
         }
-    }, [params.answers, params.questions, params.totalQuestions]);
+
+        // Connect to socket and submit score
+        const newSocket = io('https://quizzer-paov.onrender.com', {
+            transports: ['websocket', 'polling'],
+            timeout: 10000,
+        });
+
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('Result screen connected to socket');
+
+            // Join the room first
+            newSocket.emit('joinRoom', { roomId, username: username || 'Guest' });
+
+            // Submit score
+            newSocket.emit('submitScore', {
+                roomId,
+                username: username || 'Guest',
+                score: correctCount * 100,
+                correctAnswers: correctCount,
+                totalQuestions: totalQuestions,
+                totalTime: totalTimeTaken
+            });
+        });
+
+        // Listen for rank update
+        newSocket.on('yourRank', (data) => {
+            console.log('Received rank:', data);
+            setRank(data.rank);
+            setTotalPlayers(data.totalPlayers);
+            setLeaderboard(data.leaderboard || []);
+        });
+
+        // Listen for leaderboard updates from other players
+        newSocket.on('leaderboardUpdate', (data) => {
+            console.log('Leaderboard update:', data);
+            setTotalPlayers(data.totalPlayers);
+            setLeaderboard(data.leaderboard || []);
+
+            // Recalculate our rank
+            const myRank = data.leaderboard.findIndex((entry: any) => entry.username === (username || 'Guest')) + 1;
+            if (myRank > 0) {
+                setRank(myRank);
+            }
+        });
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, [params.answers, params.questions, params.totalQuestions, roomId, username]);
+
+    const getRankDisplay = () => {
+        if (rank === null) return 'Calculating...';
+        if (rank === 1) return '🥇 1st Place';
+        if (rank === 2) return '🥈 2nd Place';
+        if (rank === 3) return '🥉 3rd Place';
+        return `#${rank}`;
+    };
+
+    const getRankEmoji = () => {
+        if (rank === 1) return '🏆';
+        if (rank === 2) return '🥈';
+        if (rank === 3) return '🥉';
+        return '🎯';
+    };
 
     // Dynamic styles based on theme
     const dynamicStyles = {
@@ -67,15 +143,18 @@ export default function LiveQuizResultScreen() {
         progressBar: { ...styles.progressBar, backgroundColor: isDarkMode ? '#020617' : '#e2e8f0' },
         secondaryBtn: { ...styles.secondaryBtn, borderColor: colors.border },
         secondaryText: { ...styles.secondaryText, color: colors.secondaryText },
+        leaderboardItem: { ...styles.leaderboardItem, backgroundColor: colors.cardBg },
+        leaderboardName: { color: colors.primaryText },
+        leaderboardScore: { color: colors.secondaryText },
     };
 
     return (
         <SafeAreaView style={dynamicStyles.safe}>
-            <View style={styles.container}>
+            <ScrollView contentContainerStyle={styles.container}>
                 {/* Trophy */}
                 <View style={styles.trophyWrapper}>
                     <View style={dynamicStyles.trophyCircle}>
-                        <Text style={styles.trophy}>🏆</Text>
+                        <Text style={styles.trophy}>{getRankEmoji()}</Text>
                     </View>
                 </View>
 
@@ -86,13 +165,10 @@ export default function LiveQuizResultScreen() {
                 {/* Rank Card */}
                 <View style={dynamicStyles.rankCard}>
                     <Text style={dynamicStyles.rankLabel}>YOUR RANK</Text>
-                    <Text style={dynamicStyles.rankValue}>
-                        {score.percentage >= 80 ? '1st Place' :
-                            score.percentage >= 60 ? '2nd Place' :
-                                score.percentage >= 40 ? '3rd Place' :
-                                    score.percentage >= 20 ? '4th Place' : '5th Place'}
+                    <Text style={dynamicStyles.rankValue}>{getRankDisplay()}</Text>
+                    <Text style={dynamicStyles.rankMeta}>
+                        👥 {totalPlayers > 0 ? `${totalPlayers} player${totalPlayers > 1 ? 's' : ''} in this room` : 'Loading...'}
                     </Text>
-                    <Text style={dynamicStyles.rankMeta}>👥 {Math.floor(Math.random() * 200) + 50} others played</Text>
                 </View>
 
                 {/* Stats */}
@@ -109,6 +185,24 @@ export default function LiveQuizResultScreen() {
                         <Text style={dynamicStyles.statValue}>{score.percentage}%</Text>
                     </View>
                 </View>
+
+                {/* Leaderboard */}
+                {leaderboard.length > 0 && (
+                    <View style={dynamicStyles.performanceCard}>
+                        <Text style={dynamicStyles.performanceTitle}>🏆 LEADERBOARD</Text>
+                        {leaderboard.slice(0, 5).map((entry, index) => (
+                            <View key={index} style={dynamicStyles.leaderboardItem}>
+                                <Text style={styles.leaderboardRank}>
+                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                                </Text>
+                                <Text style={[dynamicStyles.leaderboardName, entry.username === (username || 'Guest') && styles.currentUser]}>
+                                    {entry.username} {entry.username === (username || 'Guest') ? '(You)' : ''}
+                                </Text>
+                                <Text style={dynamicStyles.leaderboardScore}>{entry.score} pts</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
 
                 {/* Performance */}
                 <View style={dynamicStyles.performanceCard}>
@@ -134,13 +228,13 @@ export default function LiveQuizResultScreen() {
                 <TouchableOpacity style={dynamicStyles.secondaryBtn}>
                     <Text style={dynamicStyles.secondaryText}>🔗 Share Result</Text>
                 </TouchableOpacity>
-            </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, alignItems: 'center' },
+    container: { padding: 20, alignItems: 'center' },
 
     trophyWrapper: { marginTop: 20, marginBottom: 20 },
     trophyCircle: {
@@ -166,7 +260,7 @@ const styles = StyleSheet.create({
     rankValue: { fontSize: 28, fontWeight: '800' },
     rankMeta: { marginTop: 6 },
 
-    statsRow: { flexDirection: 'row', gap: 14, marginBottom: 20 },
+    statsRow: { flexDirection: 'row', gap: 14, marginBottom: 20, width: '100%' },
     statCard: {
         flex: 1,
         borderRadius: 14,
@@ -181,9 +275,9 @@ const styles = StyleSheet.create({
         width: '100%',
         borderRadius: 16,
         padding: 16,
-        marginBottom: 24,
+        marginBottom: 20,
     },
-    performanceTitle: { fontSize: 12, marginBottom: 6 },
+    performanceTitle: { fontSize: 12, marginBottom: 10 },
     performanceSub: { fontWeight: '700', marginBottom: 12 },
 
     progressBar: {
@@ -199,6 +293,22 @@ const styles = StyleSheet.create({
     performanceLegend: { flexDirection: 'row', justifyContent: 'space-between' },
     correctText: { color: '#22c55e', fontSize: 12 },
     incorrectText: { color: '#ef4444', fontSize: 12 },
+
+    leaderboardItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    leaderboardRank: {
+        fontSize: 16,
+        width: 40,
+    },
+    currentUser: {
+        fontWeight: '700',
+        color: '#3b82f6',
+    },
 
     primaryBtn: {
         width: '100%',

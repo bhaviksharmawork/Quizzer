@@ -170,6 +170,7 @@ export default function LiveQuizQuestionScreen() {
           router.push({
             pathname: '/result',
             params: {
+              roomId: roomId,
               answers: JSON.stringify(updatedAnswers),
               questions: JSON.stringify(questions),
               totalQuestions: questions.length.toString()
