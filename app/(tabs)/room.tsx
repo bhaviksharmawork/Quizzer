@@ -10,16 +10,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@/contexts/UserContext';
-
-// Live Quiz Waiting Room Screen
-// Navigate to this screen after pressing "Enter Game"
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function LiveQuizRoomScreen() {
-  console.log('🎯 ROOM SCREEN COMPONENT LOADED/RE-RENDERED');
   const router = useRouter();
   const params = useLocalSearchParams();
   const { username } = useUser();
-  console.log('🎯 ROOM SCREEN - params received:', params);
+  const { isDarkMode, colors } = useTheme();
 
   const [timeLeft, setTimeLeft] = useState(10);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -28,24 +25,12 @@ export default function LiveQuizRoomScreen() {
   const [quizTitle, setQuizTitle] = useState<string>('Loading...');
   const roomId = (params.roomId as string) || (params.id as string) || '111111';
 
-  console.log('🎯 ROOM SCREEN - Room ID from params:', params.roomId);
-  console.log('🎯 ROOM SCREEN - Using room ID:', roomId);
-
-  // Reset state when screen comes into focus (when Enter Game is pressed)
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 Room screen focus effect triggered for roomId:', roomId);
-      console.log('🔄 Room screen - Current timeLeft before reset:', timeLeft);
-
-      // Reset timer to 10 seconds when entering room
       setTimeLeft(10);
       setHasInitialized(true);
-      console.log('🔄 Room screen - Set timeLeft to 10, hasInitialized = true');
-
       setConnectedUsers([]);
 
-      // Connect to socket server
-      console.log('Room screen: Attempting to connect to socket server...');
       const newSocket = io('https://quizzer-paov.onrender.com', {
         transports: ['websocket', 'polling'],
         timeout: 10000
@@ -53,31 +38,20 @@ export default function LiveQuizRoomScreen() {
       setSocket(newSocket);
 
       newSocket.on('connect', () => {
-        console.log('Room screen: Connected to socket server');
-        console.log('Room screen: Attempting to join room:', roomId);
-        console.log('Room screen: Username:', username);
-
-        // Join the room after connection is established
         newSocket.emit('joinRoom', { roomId, username });
       });
 
       newSocket.on('error', (error) => {
         console.error('Room screen: Socket error:', error);
-        if (error === 'Room does not exist') {
-          console.log('Room screen: Room does not exist, showing error to user');
-          // You might want to show an alert or navigate back
-        }
       });
 
       newSocket.on('roomState', (data) => {
-        console.log('Room screen: Room state received:', data);
         setConnectedUsers(data.users || []);
         if (data.quizTitle) {
           setQuizTitle(data.quizTitle);
         }
       });
 
-      // Also request quiz details to get the title if not in roomState
       newSocket.emit('getQuiz', { roomId });
 
       newSocket.on('quizData', (data) => {
@@ -87,12 +61,10 @@ export default function LiveQuizRoomScreen() {
       });
 
       newSocket.on('userJoined', (data) => {
-        console.log('Room screen: User joined:', data);
         setConnectedUsers(data.users || []);
       });
 
       newSocket.on('userLeft', (data) => {
-        console.log('Room screen: User left:', data);
         setConnectedUsers(data.users || []);
       });
 
@@ -106,35 +78,22 @@ export default function LiveQuizRoomScreen() {
       };
     }, [roomId])
   );
-  useEffect(() => {
-    console.log('⏱️ ROOM TIMER EFFECT: timeLeft =', timeLeft, ', roomId =', roomId, ', hasInitialized =', hasInitialized);
-    console.log('⏱️ ROOM TIMER EFFECT: Should countdown from 10 to 0');
 
-    // Don't do anything until the screen has been properly initialized
-    if (!hasInitialized) {
-      console.log('⏱️ ROOM TIMER EFFECT: Not initialized yet, waiting for focus effect');
-      return;
-    }
+  useEffect(() => {
+    if (!hasInitialized) return;
 
     if (timeLeft === 0) {
-      console.log('⏱️ ROOM TIMER REACHED ZERO: Navigating to quiz with roomId:', roomId);
-      // Reset hasInitialized so next visit will wait for focus effect
       setHasInitialized(false);
       router.push({ pathname: '/quiz', params: { roomId } });
       return;
     }
     if (timeLeft > 0) {
-      console.log('⏱️ Timer counting down:', timeLeft);
       const timer = setTimeout(() => {
-        const newTimeLeft = timeLeft - 1;
-        console.log('⏱️ Timer countdown: from', timeLeft, 'to', newTimeLeft);
-        setTimeLeft(newTimeLeft);
+        setTimeLeft(timeLeft - 1);
       }, 1000);
       return () => clearTimeout(timer);
     }
   }, [timeLeft, router, roomId, hasInitialized]);
-  console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
-  console.log('🎯 ROOM SCREEN - Should show waiting room with timer:', timeLeft, 'seconds');
 
   const players = connectedUsers.map((user, index) => ({
     id: index.toString(),
@@ -142,77 +101,95 @@ export default function LiveQuizRoomScreen() {
     tag: user === username ? 'YOU' : null
   }));
 
-
   function back() {
+    setHasInitialized(false);
     router.back();
   }
 
-  console.log('🎯 ROOM SCREEN RENDER: timeLeft =', timeLeft, ', roomId =', roomId);
-  console.log('🎯 ROOM SCREEN - Should show waiting room if timeLeft > 0');
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    safe: { flex: 1, backgroundColor: colors.background },
+    backBtn: { ...styles.backBtn, backgroundColor: colors.cardBg },
+    backText: { ...styles.backText, color: colors.primaryText },
+    codeBadge: { ...styles.codeBadge, backgroundColor: colors.cardBg },
+    title: { ...styles.title, color: colors.primaryText },
+    subtitle: { ...styles.subtitle, color: colors.secondaryText },
+    statusPill: { ...styles.statusPill, backgroundColor: colors.cardBg },
+    statusText: { ...styles.statusText, color: isDarkMode ? '#cbd5f5' : colors.secondaryText },
+    playersTitle: { ...styles.playersTitle, color: colors.primaryText },
+    countBadge: { ...styles.countBadge, backgroundColor: colors.cardBg },
+    countText: { ...styles.countText, color: colors.secondaryText },
+    avatar: { ...styles.avatar, backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' },
+    emptyAvatar: { ...styles.emptyAvatar, backgroundColor: isDarkMode ? '#020617' : '#f1f5f9', borderColor: colors.border },
+    avatarText: { ...styles.avatarText, color: colors.primaryText },
+    playerName: { ...styles.playerName, color: isDarkMode ? '#cbd5f5' : colors.secondaryText },
+    countdownLabel: { ...styles.countdownLabel, color: colors.secondaryText },
+    leaveText: { ...styles.leaveText, color: colors.secondaryText },
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={dynamicStyles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={back}>
-            <Text style={styles.backText}>←</Text>
+          <TouchableOpacity style={dynamicStyles.backBtn} onPress={back}>
+            <Text style={dynamicStyles.backText}>←</Text>
           </TouchableOpacity>
-          <View style={styles.codeBadge}>
+          <View style={dynamicStyles.codeBadge}>
             <Text style={styles.codeText}>Code: {roomId}</Text>
           </View>
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>{quizTitle}</Text>
-        <Text style={styles.subtitle}>Hosted by @QuizMaster</Text>
+        <Text style={dynamicStyles.title}>{quizTitle}</Text>
+        <Text style={dynamicStyles.subtitle}>Hosted by @QuizMaster</Text>
 
         {/* Status */}
-        <View style={styles.statusPill}>
+        <View style={dynamicStyles.statusPill}>
           <View style={styles.dot} />
-          <Text style={styles.statusText}>Waiting for Host...</Text>
+          <Text style={dynamicStyles.statusText}>Waiting for Host...</Text>
         </View>
 
         {/* Players */}
         <View style={styles.playersHeader}>
-          <Text style={styles.playersTitle}>Players Joined</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>12</Text>
+          <Text style={dynamicStyles.playersTitle}>Players Joined</Text>
+          <View style={dynamicStyles.countBadge}>
+            <Text style={dynamicStyles.countText}>{players.length}</Text>
           </View>
         </View>
 
         <View style={styles.playersGrid}>
           {players.map((p) => (
             <View key={p.id} style={styles.playerItem}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{p.name[0]}</Text>
+              <View style={dynamicStyles.avatar}>
+                <Text style={dynamicStyles.avatarText}>{p.name[0]}</Text>
                 {p.tag === 'YOU' && (
                   <View style={styles.youBadge}>
                     <Text style={styles.youText}>YOU</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.playerName}>{p.name}</Text>
+              <Text style={dynamicStyles.playerName}>{p.name}</Text>
             </View>
           ))}
 
           {/* Empty Slot */}
           <View style={styles.playerItem}>
-            <View style={[styles.avatar, styles.emptyAvatar]}>
-              <Text style={{ color: '#64748b' }}>+</Text>
+            <View style={[dynamicStyles.avatar, dynamicStyles.emptyAvatar]}>
+              <Text style={{ color: colors.secondaryText }}>+</Text>
             </View>
           </View>
         </View>
 
         {/* Countdown */}
         <View style={styles.countdownBox}>
-          <Text style={styles.countdownLabel}>STARTING IN</Text>
+          <Text style={dynamicStyles.countdownLabel}>STARTING IN</Text>
           <Text style={styles.countdownTime}>{String(Math.floor(timeLeft / 60)).padStart(2, '0')} : {String(timeLeft % 60).padStart(2, '0')}</Text>
         </View>
 
         {/* Leave */}
         <TouchableOpacity style={styles.leaveBtn} onPress={back}>
-          <Text style={styles.leaveText}>Leave Room</Text>
+          <Text style={dynamicStyles.leaveText}>Leave Room</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -220,7 +197,6 @@ export default function LiveQuizRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#071025' },
   container: { padding: 20 },
 
   header: {
@@ -233,14 +209,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#0b1220',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backText: { color: '#fff', fontSize: 18 },
+  backText: { fontSize: 18 },
 
   codeBadge: {
-    backgroundColor: '#0b1220',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -248,14 +222,12 @@ const styles = StyleSheet.create({
   codeText: { color: '#60a5fa', fontWeight: '600' },
 
   title: {
-    color: '#fff',
     fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
     marginTop: 10,
   },
   subtitle: {
-    color: '#94a3b8',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -264,7 +236,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'center',
     alignItems: 'center',
-    backgroundColor: '#0b1220',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -277,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
     marginRight: 8,
   },
-  statusText: { color: '#cbd5f5', fontSize: 13 },
+  statusText: { fontSize: 13 },
 
   playersHeader: {
     flexDirection: 'row',
@@ -285,14 +256,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  playersTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  playersTitle: { fontSize: 16, fontWeight: '700' },
   countBadge: {
-    backgroundColor: '#0b1220',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  countText: { color: '#94a3b8', fontSize: 12 },
+  countText: { fontSize: 12 },
 
   playersGrid: {
     flexDirection: 'row',
@@ -306,14 +276,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
-  emptyAvatar: { backgroundColor: '#020617', borderWidth: 1, borderColor: '#0f172a' },
+  emptyAvatar: { borderWidth: 1 },
 
-  avatarText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  avatarText: { fontSize: 20, fontWeight: '700' },
 
   youBadge: {
     position: 'absolute',
@@ -325,12 +294,12 @@ const styles = StyleSheet.create({
   },
   youText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
-  playerName: { color: '#cbd5f5', fontSize: 12, marginTop: 6 },
+  playerName: { fontSize: 12, marginTop: 6 },
 
   countdownBox: { alignItems: 'center', marginBottom: 20 },
-  countdownLabel: { color: '#64748b', fontSize: 12, marginBottom: 6 },
+  countdownLabel: { fontSize: 12, marginBottom: 6 },
   countdownTime: { color: '#38bdf8', fontSize: 28, fontWeight: '800' },
 
   leaveBtn: { alignSelf: 'center', marginTop: 10 },
-  leaveText: { color: '#94a3b8', textDecorationLine: 'underline' },
+  leaveText: { textDecorationLine: 'underline' },
 });

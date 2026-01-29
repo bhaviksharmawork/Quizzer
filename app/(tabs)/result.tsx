@@ -7,12 +7,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-// Live Quiz Result / Completion Screen
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function LiveQuizResultScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { isDarkMode, colors } = useTheme();
   const [score, setScore] = useState({ correct: 0, total: 0, percentage: 0 });
   const [totalTime, setTotalTime] = useState(0);
 
@@ -22,7 +22,6 @@ export default function LiveQuizResultScreen() {
       const questionsData = JSON.parse(params.questions as string || '[]');
       const totalQuestions = parseInt(params.totalQuestions as string || '0');
 
-      // Calculate correct answers
       let correctCount = 0;
       let totalTimeTaken = 0;
 
@@ -45,58 +44,78 @@ export default function LiveQuizResultScreen() {
       setTotalTime(totalTimeTaken);
     } catch (error) {
       console.error('Error parsing quiz data:', error);
-      // Fallback to default values
       setScore({ correct: 0, total: 0, percentage: 0 });
     }
   }, [params.answers, params.questions, params.totalQuestions]);
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    safe: { flex: 1, backgroundColor: colors.background },
+    trophyCircle: { ...styles.trophyCircle, backgroundColor: colors.cardBg },
+    title: { ...styles.title, color: colors.primaryText },
+    subtitle: { ...styles.subtitle, color: colors.secondaryText },
+    rankCard: { ...styles.rankCard, backgroundColor: colors.cardBg },
+    rankLabel: { ...styles.rankLabel, color: colors.secondaryText },
+    rankValue: { ...styles.rankValue, color: colors.primaryText },
+    rankMeta: { ...styles.rankMeta, color: colors.secondaryText },
+    statCard: { ...styles.statCard, backgroundColor: colors.cardBg },
+    statLabel: { ...styles.statLabel, color: colors.secondaryText },
+    statValue: { ...styles.statValue, color: colors.primaryText },
+    performanceCard: { ...styles.performanceCard, backgroundColor: colors.cardBg },
+    performanceTitle: { ...styles.performanceTitle, color: colors.secondaryText },
+    performanceSub: { ...styles.performanceSub, color: colors.primaryText },
+    progressBar: { ...styles.progressBar, backgroundColor: isDarkMode ? '#020617' : '#e2e8f0' },
+    secondaryBtn: { ...styles.secondaryBtn, borderColor: colors.border },
+    secondaryText: { ...styles.secondaryText, color: colors.secondaryText },
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={dynamicStyles.safe}>
       <View style={styles.container}>
         {/* Trophy */}
         <View style={styles.trophyWrapper}>
-          <View style={styles.trophyCircle}>
+          <View style={dynamicStyles.trophyCircle}>
             <Text style={styles.trophy}>🏆</Text>
           </View>
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Well Done!</Text>
-        <Text style={styles.subtitle}>You completed the quiz successfully.</Text>
+        <Text style={dynamicStyles.title}>Well Done!</Text>
+        <Text style={dynamicStyles.subtitle}>You completed the quiz successfully.</Text>
 
         {/* Rank Card */}
-        <View style={styles.rankCard}>
-          <Text style={styles.rankLabel}>YOUR RANK</Text>
-          <Text style={styles.rankValue}>
+        <View style={dynamicStyles.rankCard}>
+          <Text style={dynamicStyles.rankLabel}>YOUR RANK</Text>
+          <Text style={dynamicStyles.rankValue}>
             {score.percentage >= 80 ? '1st Place' :
               score.percentage >= 60 ? '2nd Place' :
                 score.percentage >= 40 ? '3rd Place' :
                   score.percentage >= 20 ? '4th Place' : '5th Place'}
           </Text>
-          <Text style={styles.rankMeta}>👥 {Math.floor(Math.random() * 200) + 50} others played</Text>
+          <Text style={dynamicStyles.rankMeta}>👥 {Math.floor(Math.random() * 200) + 50} others played</Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <View style={dynamicStyles.statCard}>
             <Text style={styles.statIcon}>⭐</Text>
-            <Text style={styles.statLabel}>Total Score</Text>
-            <Text style={styles.statValue}>{score.correct * 100} pts</Text>
+            <Text style={dynamicStyles.statLabel}>Total Score</Text>
+            <Text style={dynamicStyles.statValue}>{score.correct * 100} pts</Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={dynamicStyles.statCard}>
             <Text style={styles.statIcon}>🎯</Text>
-            <Text style={styles.statLabel}>Accuracy</Text>
-            <Text style={styles.statValue}>{score.percentage}%</Text>
+            <Text style={dynamicStyles.statLabel}>Accuracy</Text>
+            <Text style={dynamicStyles.statValue}>{score.percentage}%</Text>
           </View>
         </View>
 
         {/* Performance */}
-        <View style={styles.performanceCard}>
-          <Text style={styles.performanceTitle}>PERFORMANCE BREAKDOWN</Text>
-          <Text style={styles.performanceSub}>{score.total} Questions</Text>
+        <View style={dynamicStyles.performanceCard}>
+          <Text style={dynamicStyles.performanceTitle}>PERFORMANCE BREAKDOWN</Text>
+          <Text style={dynamicStyles.performanceSub}>{score.total} Questions</Text>
 
-          <View style={styles.progressBar}>
+          <View style={dynamicStyles.progressBar}>
             <View style={[styles.correctBar, { width: `${score.percentage}%` }]} />
             <View style={[styles.incorrectBar, { width: `${100 - score.percentage}%` }]} />
           </View>
@@ -112,8 +131,8 @@ export default function LiveQuizResultScreen() {
           <Text style={styles.primaryText}>🏠 Back to Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn}>
-          <Text style={styles.secondaryText}>🔗 Share Result</Text>
+        <TouchableOpacity style={dynamicStyles.secondaryBtn}>
+          <Text style={dynamicStyles.secondaryText}>🔗 Share Result</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -121,7 +140,6 @@ export default function LiveQuizResultScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#071025' },
   container: { flex: 1, padding: 20, alignItems: 'center' },
 
   trophyWrapper: { marginTop: 20, marginBottom: 20 },
@@ -129,55 +147,50 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#0b1220',
     alignItems: 'center',
     justifyContent: 'center',
   },
   trophy: { fontSize: 32 },
 
-  title: { color: '#fff', fontSize: 26, fontWeight: '800' },
-  subtitle: { color: '#94a3b8', marginTop: 6, marginBottom: 20 },
+  title: { fontSize: 26, fontWeight: '800' },
+  subtitle: { marginTop: 6, marginBottom: 20 },
 
   rankCard: {
     width: '100%',
-    backgroundColor: '#0b1220',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     marginBottom: 20,
   },
-  rankLabel: { color: '#64748b', fontSize: 12, marginBottom: 6 },
-  rankValue: { color: '#fff', fontSize: 28, fontWeight: '800' },
-  rankMeta: { color: '#94a3b8', marginTop: 6 },
+  rankLabel: { fontSize: 12, marginBottom: 6 },
+  rankValue: { fontSize: 28, fontWeight: '800' },
+  rankMeta: { marginTop: 6 },
 
   statsRow: { flexDirection: 'row', gap: 14, marginBottom: 20 },
   statCard: {
     flex: 1,
-    backgroundColor: '#0b1220',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
   },
   statIcon: { fontSize: 18, marginBottom: 6 },
-  statLabel: { color: '#94a3b8', fontSize: 12 },
-  statValue: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 6 },
+  statLabel: { fontSize: 12 },
+  statValue: { fontSize: 18, fontWeight: '700', marginTop: 6 },
 
   performanceCard: {
     width: '100%',
-    backgroundColor: '#0b1220',
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
   },
-  performanceTitle: { color: '#64748b', fontSize: 12, marginBottom: 6 },
-  performanceSub: { color: '#fff', fontWeight: '700', marginBottom: 12 },
+  performanceTitle: { fontSize: 12, marginBottom: 6 },
+  performanceSub: { fontWeight: '700', marginBottom: 12 },
 
   progressBar: {
     flexDirection: 'row',
     height: 8,
     borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: '#020617',
     marginBottom: 10,
   },
   correctBar: { backgroundColor: '#22c55e' },
@@ -200,10 +213,9 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#1e293b',
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
   },
-  secondaryText: { color: '#94a3b8' },
+  secondaryText: {},
 });

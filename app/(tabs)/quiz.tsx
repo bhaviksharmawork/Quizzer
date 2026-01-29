@@ -8,39 +8,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
-
-// Live Quiz Question Screen (Kahoot-style)
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function LiveQuizQuestionScreen() {
-  console.log('🚀 QUIZ SCREEN COMPONENT LOADED/RE-RENDERED');
   const router = useRouter();
-
   const params = useLocalSearchParams();
+  const { isDarkMode, colors } = useTheme();
   const [latestRoomId, setLatestRoomId] = useState<string>('111111');
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(0); // Start at 0, will be set when quiz loads
+  const [timeLeft, setTimeLeft] = useState(0);
   const [answers, setAnswers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [previousRoomId, setPreviousRoomId] = useState<string>('');
   const questionStartTime = useRef<number>(Date.now());
-  const quizLoadedRef = useRef<boolean>(false); // Track if quiz has been loaded to prevent duplicate processing
+  const quizLoadedRef = useRef<boolean>(false);
 
-  // Use useFocusEffect to capture params when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('📱 QUIZ SCREEN GAINED FOCUS');
-      console.log('Quiz screen - All params received:', params);
-      console.log('Quiz screen - params.roomId:', params.roomId);
-      console.log('Quiz screen - params.id:', params.id);
-
-      // Always reset state when screen gains focus (new quiz session)
       const newRoomId = (params.roomId as string) || (params.id as string) || '111111';
-      console.log('Quiz screen - New room ID from params:', newRoomId);
-
-      // Reset all quiz state for fresh start
       setQuestions([]);
       setCurrentQuestionIndex(0);
       setSelected(null);
@@ -49,49 +37,26 @@ export default function LiveQuizQuestionScreen() {
       setLoading(true);
       setQuizCompleted(false);
       setLatestRoomId(newRoomId);
-      quizLoadedRef.current = false; // Reset so new quiz can be loaded
-
-      console.log('📱 QUIZ SCREEN - State reset complete for room:', newRoomId);
+      quizLoadedRef.current = false;
     }, [params.roomId, params.id])
   );
 
-  // Use the latest room ID captured from params
   const roomId = latestRoomId || '111111';
 
-  console.log('Quiz screen - Using room ID:', roomId);
-
-  // Reset quiz state when room changes
   useEffect(() => {
-    console.log('🔄 ROOM CHANGE DETECTED: Old room:', previousRoomId, 'New room:', roomId);
-
-    // Reset ALL quiz state when room changes (except timeLeft)
     setQuestions([]);
     setCurrentQuestionIndex(0);
     setSelected(null);
     setAnswers([]);
-    // Don't reset timeLeft here - let quiz data set it properly
     setLoading(true);
     setPreviousRoomId(roomId);
-    quizLoadedRef.current = false; // Reset so new quiz can be loaded
-
-    console.log('🔄 QUIZ STATE RESET COMPLETE');
+    quizLoadedRef.current = false;
   }, [roomId]);
 
-  // Load quiz from server
   useEffect(() => {
-    console.log('🔌 SOCKET EFFECT RUNNING for roomId:', roomId);
-    console.log('🔌 Loading state:', loading);
-    console.log('🔌 quizLoadedRef.current:', quizLoadedRef.current);
+    if (!loading || quizLoadedRef.current) return;
 
-    // Only connect if we're still loading (haven't loaded quiz yet)
-    if (!loading || quizLoadedRef.current) {
-      console.log('🔌 Skipping socket connection - quiz already loaded or not in loading state');
-      return;
-    }
-
-    // ALWAYS create a new socket connection for each room to prevent caching issues
     if (socket) {
-      console.log('🔌 Disconnecting old socket for room change');
       socket.disconnect();
     }
 
@@ -107,57 +72,26 @@ export default function LiveQuizQuestionScreen() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      console.log('🔌 Socket connected');
-      console.log('🔌 Emitting getQuiz for room:', roomId);
-      console.log('🔌 Room ID type:', typeof roomId);
-      console.log('🔌 Room ID value:', roomId);
-
-      // Request quiz data for this room immediately
       newSocket.emit('getQuiz', { roomId });
-
-      // Add a fallback timeout in case quiz data doesn't come through
       setTimeout(() => {
         if (!quizLoadedRef.current) {
-          console.log('🔌 Quiz request timeout, retrying...');
           newSocket.emit('getQuiz', { roomId });
         }
-      }, 3000); // 3 seconds
+      }, 3000);
     });
 
     newSocket.on('quizData', (data) => {
-      console.log('🔍 QUIZ DATA RECEIVED EVENT');
-      console.log('🔍 Raw data:', JSON.stringify(data, null, 2));
-      console.log('🔍 Room ID:', data.roomId);
-      console.log('🔍 Quiz object:', data.quiz);
-      console.log('🔍 Questions array:', data.quiz?.questions);
-      console.log('🔍 Number of questions:', data.quiz?.questions?.length);
-
-      // IMPORTANT: Only process if we haven't already loaded questions
-      // This prevents timer reset when quiz data is received again
-      // Use ref to avoid stale closure issues
-      if (quizLoadedRef.current) {
-        console.log('🔍 Quiz already loaded, ignoring duplicate quizData event');
-        return;
-      }
+      if (quizLoadedRef.current) return;
 
       if (data.quiz && data.quiz.questions && data.quiz.questions.length > 0) {
-        console.log('✅ Quiz has valid questions, processing...');
-        console.log('Quiz screen: Processing quiz data...');
-        const quizTimeLimit = data.quiz.timeLimit || 30; // Get quiz-level timeLimit
-        console.log('🔍 Quiz-level timeLimit:', quizTimeLimit);
-
-        // Convert server quiz format to our component format
         const formattedQuestions = data.quiz.questions.map((q: any, index: number) => {
-          console.log(`📝 Processing question ${index + 1}:`, q);
-          // Handle both formats: answers (from addquiz) and options (from JSON)
           const answers = q.answers || q.options || [];
           const timeLimit = q.timeLimit || 20;
-          console.log(`📝 Question ${index + 1} timeLimit:`, timeLimit);
           return {
             id: index + 1,
             question: q.question,
             options: answers.map((answer: any, i: number) => ({
-              id: answer.id || String.fromCharCode(65 + i), // Handle both string id and index
+              id: answer.id || String.fromCharCode(65 + i),
               text: answer.text || answer,
               color: i === 0 ? '#dbeafe' : i === 1 ? '#dcfce7' : i === 2 ? '#fef3c7' : '#fee2e2'
             })),
@@ -166,36 +100,21 @@ export default function LiveQuizQuestionScreen() {
           };
         });
 
-        console.log('✅ FORMATTED QUESTIONS COMPLETE');
-        console.log('🔍 Total formatted questions:', formattedQuestions.length);
-        console.log('🔍 First question:', formattedQuestions[0]);
-        console.log('🔍 Last question:', formattedQuestions[formattedQuestions.length - 1]);
-
         setQuestions(formattedQuestions);
-        const firstQuestionTime = formattedQuestions[0]?.timeLimit || 30;
-        console.log('⏰ Setting initial timer to:', firstQuestionTime);
-        setTimeLeftWithDebug(firstQuestionTime);
+        setTimeLeftWithDebug(formattedQuestions[0]?.timeLimit || 30);
         setCurrentQuestionIndex(0);
         setLoading(false);
-        quizLoadedRef.current = true; // Mark quiz as loaded
-        console.log('✅ Quiz loading complete, all states updated');
+        quizLoadedRef.current = true;
       } else {
-        console.log('Quiz screen: No quiz found for room:', roomId);
-        console.log('Quiz screen: No quiz data available');
-        // Don't set fallback questions - just keep loading state or show empty state
         setLoading(false);
       }
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('🔌 Socket connection error:', error);
-      console.error('🔌 Server may not be running at https://quizzer-paov.onrender.com');
+    newSocket.on('connect_error', () => {
       setLoading(false);
-      // Don't set fallback questions on connection error - just show loading state
     });
 
     return () => {
-      // Remove all listeners before disconnecting
       newSocket.off('quizData');
       newSocket.off('connect');
       newSocket.off('connect_error');
@@ -203,47 +122,30 @@ export default function LiveQuizQuestionScreen() {
     };
   }, [roomId, loading]);
 
-  // Add a custom setter to track timeLeft changes
   const setTimeLeftWithDebug = (value: number) => {
-    console.log('⏰ SET_TIME_LEFT CALLED with value:', value);
     setTimeLeft(value);
   };
 
   const [selected, setSelected] = useState<string | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
 
-  // Reset timer for each question - only when question index changes
   useEffect(() => {
     if (questions.length > 0 && currentQuestionIndex < questions.length) {
       const currentQuestion = questions[currentQuestionIndex];
       if (currentQuestion) {
         const timeLimit = currentQuestion?.timeLimit || 30;
-        console.log('⏰ TIMER EFFECT: Question', currentQuestionIndex + 1, 'timeLimit:', timeLimit);
-        console.log('⏰ TIMER EFFECT: Setting timeLeft to:', timeLimit);
-
-        // Set timer for the new question
         setTimeLeftWithDebug(timeLimit);
         questionStartTime.current = Date.now();
       }
     }
-  }, [currentQuestionIndex, questions]); // Removed 'selected' - timer should only reset on question change
+  }, [currentQuestionIndex, questions]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
-    // Don't run timer during loading or when no questions
-    if (loading || questions.length === 0 || !currentQuestion) {
-      return;
-    }
+    if (loading || questions.length === 0 || !currentQuestion) return;
 
     if (timeLeft === 0 && currentQuestion) {
-      console.log('⏰ Timer reached zero, processing answer for question:', currentQuestion.question);
-      console.log('⏰ Time left before processing:', timeLeft);
-      console.log('⏰ Current question index:', currentQuestionIndex);
-      console.log('⏰ Total questions:', questions.length);
-      console.log('⏰ Questions array:', questions);
-
-      // Calculate actual time taken
       const timeTaken = Math.round((Date.now() - questionStartTime.current) / 1000);
       const newAnswer = {
         questionId: currentQuestion.id,
@@ -253,24 +155,17 @@ export default function LiveQuizQuestionScreen() {
 
       const updatedAnswers = [...answers, newAnswer];
       setAnswers(updatedAnswers);
-      console.log('📝 Answer recorded:', newAnswer);
-      console.log('📝 Updated answers array:', updatedAnswers);
 
-      // Check if there are more questions
       if (currentQuestionIndex < questions.length - 1) {
-        console.log('➡️ Moving to next question, current:', currentQuestionIndex, 'next:', currentQuestionIndex + 1);
         setTimeout(() => {
           setCurrentQuestionIndex(currentQuestionIndex + 1);
           const nextTimeLimit = questions[currentQuestionIndex + 1]?.timeLimit || 3;
           setTimeLeft(nextTimeLimit);
           setSelected(null);
-          questionStartTime.current = Date.now(); // Reset timer for next question
-          console.log('⏰ Timer reset for next question, timeLeft:', nextTimeLimit);
+          questionStartTime.current = Date.now();
         }, 0);
       } else {
-        console.log('🏁 Quiz completed, navigating to results');
         setQuizCompleted(true);
-        // Quiz completed, navigate to results screen with data
         setTimeout(() => {
           router.push({
             pathname: '/result',
@@ -288,60 +183,66 @@ export default function LiveQuizQuestionScreen() {
     return () => clearTimeout(timer);
   }, [timeLeft, selected, currentQuestionIndex, currentQuestion, router, questions, loading]);
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    safe: { flex: 1, backgroundColor: colors.background },
+    close: { ...styles.close, color: colors.secondaryText },
+    progress: { ...styles.progress, color: isDarkMode ? '#cbd5f5' : colors.primaryText },
+    menu: { ...styles.menu, color: colors.secondaryText },
+    progressBarBg: { ...styles.progressBarBg, backgroundColor: colors.cardBg },
+    timerValue: { ...styles.timerValue, color: colors.primaryText },
+    timerLabel: { ...styles.timerLabel, color: colors.secondaryText },
+    question: { ...styles.question, color: colors.primaryText },
+    loadingText: { ...styles.loadingText, color: colors.primaryText },
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={dynamicStyles.safe}>
       <View style={styles.container}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading quiz...</Text>
+            <Text style={dynamicStyles.loadingText}>Loading quiz...</Text>
           </View>
         ) : questions.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>No quiz found for this room</Text>
+            <Text style={dynamicStyles.loadingText}>No quiz found for this room</Text>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Go Back</Text>
             </TouchableOpacity>
           </View>
         ) : !currentQuestion ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Error loading question</Text>
+            <Text style={dynamicStyles.loadingText}>Error loading question</Text>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Go Back</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
-            {console.log('🎯 RENDERING QUESTION:', {
-              currentIndex: currentQuestionIndex,
-              totalQuestions: questions.length,
-              question: currentQuestion?.question,
-              timeLeft: timeLeft,
-              timeLimit: currentQuestion?.timeLimit
-            })}
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={() => router.back()}>
-                <Text style={styles.close}>✕</Text>
+                <Text style={dynamicStyles.close}>✕</Text>
               </TouchableOpacity>
-              <Text style={styles.progress}>QUESTION {currentQuestionIndex + 1} / {questions.length}</Text>
-              <Text style={styles.menu}>⋯</Text>
+              <Text style={dynamicStyles.progress}>QUESTION {currentQuestionIndex + 1} / {questions.length}</Text>
+              <Text style={dynamicStyles.menu}>⋯</Text>
             </View>
 
             {/* Progress Bar */}
-            <View style={styles.progressBarBg}>
+            <View style={dynamicStyles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }]} />
             </View>
 
             {/* Timer */}
             <View style={styles.timerWrapper}>
               <View style={styles.timerCircle}>
-                <Text style={styles.timerValue}>{timeLeft}</Text>
-                <Text style={styles.timerLabel}>SEC</Text>
+                <Text style={dynamicStyles.timerValue}>{timeLeft}</Text>
+                <Text style={dynamicStyles.timerLabel}>SEC</Text>
               </View>
             </View>
 
             {/* Question */}
-            <Text style={styles.question}>
+            <Text style={dynamicStyles.question}>
               {currentQuestion?.question}
             </Text>
 
@@ -355,14 +256,7 @@ export default function LiveQuizQuestionScreen() {
                     { backgroundColor: opt.color },
                     selected === opt.id && styles.optionSelected,
                   ]}
-                  onPress={() => {
-                    console.log('🖱️ OPTION CLICKED:', opt.id);
-                    console.log('🖱️ Current questions length:', questions.length);
-                    console.log('🖱️ Current question:', currentQuestion);
-                    console.log('🖱️ About to call setSelected');
-                    setSelected(opt.id);
-                    console.log('🖱️ setSelected called with:', opt.id);
-                  }}
+                  onPress={() => setSelected(opt.id)}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.optionKey}>{opt.id}</Text>
@@ -378,7 +272,6 @@ export default function LiveQuizQuestionScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#071025' },
   container: { flex: 1, padding: 20 },
 
   header: {
@@ -387,13 +280,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  close: { color: '#94a3b8', fontSize: 18 },
-  progress: { color: '#cbd5f5', fontSize: 12, fontWeight: '600' },
-  menu: { color: '#94a3b8', fontSize: 20 },
+  close: { fontSize: 18 },
+  progress: { fontSize: 12, fontWeight: '600' },
+  menu: { fontSize: 20 },
 
   progressBarBg: {
     height: 4,
-    backgroundColor: '#0b1220',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 24,
@@ -413,11 +305,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timerValue: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  timerLabel: { color: '#94a3b8', fontSize: 10 },
+  timerValue: { fontSize: 22, fontWeight: '800' },
+  timerLabel: { fontSize: 10 },
 
   question: {
-    color: '#fff',
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
@@ -460,7 +351,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },

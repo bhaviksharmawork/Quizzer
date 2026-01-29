@@ -9,10 +9,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const { username, logout } = useUser();
+    const { isDarkMode, colors } = useTheme();
 
     const stats = [
         { label: 'Quizzes Played', value: '24', icon: '🎮' },
@@ -33,7 +35,6 @@ export default function ProfileScreen() {
         router.replace('/login');
     };
 
-    // Get initials from username
     const getInitials = (name: string | null) => {
         if (!name) return '?';
         return name
@@ -44,70 +45,98 @@ export default function ProfileScreen() {
             .slice(0, 2);
     };
 
+    // Dynamic styles based on theme
+    const dynamicStyles = {
+        safe: { flex: 1, backgroundColor: colors.background },
+        backBtn: { ...styles.backBtn, color: colors.primaryText },
+        headerTitle: { ...styles.headerTitle, color: colors.primaryText },
+        profileCard: { ...styles.profileCard, backgroundColor: colors.cardBg, borderColor: colors.border },
+        avatarInner: { ...styles.avatarInner, backgroundColor: colors.background },
+        avatarText: { ...styles.avatarText, color: colors.primaryText },
+        onlineIndicator: { ...styles.onlineIndicator, borderColor: colors.cardBg },
+        username: { ...styles.username, color: colors.primaryText },
+        userTag: { ...styles.userTag, color: colors.secondaryText },
+        levelBadge: { ...styles.levelBadge, backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' },
+        xpBar: { ...styles.xpBar, backgroundColor: isDarkMode ? '#1e293b' : '#e2e8f0' },
+        xpText: { ...styles.xpText, color: colors.secondaryText },
+        sectionTitle: { ...styles.sectionTitle, color: colors.primaryText },
+        statCard: { ...styles.statCard, backgroundColor: colors.cardBg, borderColor: colors.border },
+        statValue: { ...styles.statValue, color: colors.primaryText },
+        statLabel: { ...styles.statLabel, color: colors.secondaryText },
+        achievementCard: { ...styles.achievementCard, backgroundColor: colors.cardBg, borderColor: colors.border },
+        achievementIcon: { ...styles.achievementIcon, backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' },
+        achievementIconLocked: { ...styles.achievementIconLocked, backgroundColor: isDarkMode ? '#0f172a' : '#e2e8f0' },
+        achievementTitle: { ...styles.achievementTitle, color: colors.primaryText },
+        achievementDesc: { ...styles.achievementDesc, color: colors.secondaryText },
+        textLocked: { color: colors.secondaryText },
+        editProfileBtn: { ...styles.editProfileBtn, backgroundColor: isDarkMode ? '#1e3a5f' : '#dbeafe' },
+        logoutBtn: { ...styles.logoutBtn, backgroundColor: isDarkMode ? '#1e1b2e' : '#fef2f2' },
+    };
+
     return (
-        <SafeAreaView style={styles.safe}>
+        <SafeAreaView style={dynamicStyles.safe}>
             <ScrollView contentContainerStyle={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.backBtn}>←</Text>
+                        <Text style={dynamicStyles.backBtn}>←</Text>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Profile</Text>
+                    <Text style={dynamicStyles.headerTitle}>Profile</Text>
                     <TouchableOpacity>
                         <Text style={styles.settingsBtn}>⚙️</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Profile Card */}
-                <View style={styles.profileCard}>
+                <View style={dynamicStyles.profileCard}>
                     <View style={styles.avatarContainer}>
                         <View style={styles.avatarGradient}>
-                            <View style={styles.avatarInner}>
-                                <Text style={styles.avatarText}>{getInitials(username)}</Text>
+                            <View style={dynamicStyles.avatarInner}>
+                                <Text style={dynamicStyles.avatarText}>{getInitials(username)}</Text>
                             </View>
                         </View>
-                        <View style={styles.onlineIndicator} />
+                        <View style={dynamicStyles.onlineIndicator} />
                     </View>
 
-                    <Text style={styles.username}>{username || 'Guest'}</Text>
-                    <Text style={styles.userTag}>@{(username || 'guest').toLowerCase().replace(/\s+/g, '')}</Text>
+                    <Text style={dynamicStyles.username}>{username || 'Guest'}</Text>
+                    <Text style={dynamicStyles.userTag}>@{(username || 'guest').toLowerCase().replace(/\s+/g, '')}</Text>
 
-                    <View style={styles.levelBadge}>
+                    <View style={dynamicStyles.levelBadge}>
                         <Text style={styles.levelText}>🔥 Level 12 • Quiz Enthusiast</Text>
                     </View>
 
-                    <View style={styles.xpBar}>
+                    <View style={dynamicStyles.xpBar}>
                         <View style={styles.xpFill} />
                     </View>
-                    <Text style={styles.xpText}>2,450 / 3,000 XP to Level 13</Text>
+                    <Text style={dynamicStyles.xpText}>2,450 / 3,000 XP to Level 13</Text>
                 </View>
 
                 {/* Stats Grid */}
-                <Text style={styles.sectionTitle}>Your Stats</Text>
+                <Text style={dynamicStyles.sectionTitle}>Your Stats</Text>
                 <View style={styles.statsGrid}>
                     {stats.map((stat, index) => (
-                        <View key={index} style={styles.statCard}>
+                        <View key={index} style={dynamicStyles.statCard}>
                             <Text style={styles.statIcon}>{stat.icon}</Text>
-                            <Text style={styles.statValue}>{stat.value}</Text>
-                            <Text style={styles.statLabel}>{stat.label}</Text>
+                            <Text style={dynamicStyles.statValue}>{stat.value}</Text>
+                            <Text style={dynamicStyles.statLabel}>{stat.label}</Text>
                         </View>
                     ))}
                 </View>
 
                 {/* Achievements */}
-                <Text style={styles.sectionTitle}>Achievements</Text>
+                <Text style={dynamicStyles.sectionTitle}>Achievements</Text>
                 <View style={styles.achievementsContainer}>
                     {achievements.map((achievement) => (
                         <View
                             key={achievement.id}
                             style={[
-                                styles.achievementCard,
+                                dynamicStyles.achievementCard,
                                 !achievement.unlocked && styles.achievementLocked
                             ]}
                         >
                             <View style={[
-                                styles.achievementIcon,
-                                !achievement.unlocked && styles.achievementIconLocked
+                                dynamicStyles.achievementIcon,
+                                !achievement.unlocked && dynamicStyles.achievementIconLocked
                             ]}>
                                 <Text style={{ fontSize: 24, opacity: achievement.unlocked ? 1 : 0.4 }}>
                                     {achievement.icon}
@@ -115,12 +144,12 @@ export default function ProfileScreen() {
                             </View>
                             <View style={styles.achievementInfo}>
                                 <Text style={[
-                                    styles.achievementTitle,
-                                    !achievement.unlocked && styles.textLocked
+                                    dynamicStyles.achievementTitle,
+                                    !achievement.unlocked && dynamicStyles.textLocked
                                 ]}>
                                     {achievement.title}
                                 </Text>
-                                <Text style={styles.achievementDesc}>{achievement.desc}</Text>
+                                <Text style={dynamicStyles.achievementDesc}>{achievement.desc}</Text>
                             </View>
                             {achievement.unlocked && (
                                 <Text style={styles.checkmark}>✓</Text>
@@ -131,11 +160,11 @@ export default function ProfileScreen() {
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.editProfileBtn}>
+                    <TouchableOpacity style={dynamicStyles.editProfileBtn}>
                         <Text style={styles.editProfileText}>✏️ Edit Profile</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                    <TouchableOpacity style={dynamicStyles.logoutBtn} onPress={handleLogout}>
                         <Text style={styles.logoutText}>🚪 Logout</Text>
                     </TouchableOpacity>
                 </View>
@@ -147,7 +176,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: '#071025' },
     container: { padding: 20 },
 
     header: {
@@ -156,18 +184,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 24,
     },
-    backBtn: { color: '#fff', fontSize: 22 },
-    headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+    backBtn: { fontSize: 22 },
+    headerTitle: { fontSize: 18, fontWeight: '700' },
     settingsBtn: { fontSize: 20 },
 
     profileCard: {
-        backgroundColor: '#0b1220',
         borderRadius: 24,
         padding: 24,
         alignItems: 'center',
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: '#1e293b',
     },
     avatarContainer: {
         position: 'relative',
@@ -184,13 +210,11 @@ const styles = StyleSheet.create({
     },
     avatarInner: {
         flex: 1,
-        backgroundColor: '#071025',
         borderRadius: 47,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarText: {
-        color: '#fff',
         fontSize: 32,
         fontWeight: '800',
     },
@@ -203,21 +227,17 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#22c55e',
         borderWidth: 3,
-        borderColor: '#0b1220',
     },
     username: {
-        color: '#fff',
         fontSize: 24,
         fontWeight: '800',
         marginBottom: 4,
     },
     userTag: {
-        color: '#64748b',
         fontSize: 14,
         marginBottom: 12,
     },
     levelBadge: {
-        backgroundColor: '#1e293b',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
@@ -231,7 +251,6 @@ const styles = StyleSheet.create({
     xpBar: {
         width: '100%',
         height: 8,
-        backgroundColor: '#1e293b',
         borderRadius: 4,
         overflow: 'hidden',
         marginBottom: 8,
@@ -243,12 +262,10 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     xpText: {
-        color: '#64748b',
         fontSize: 11,
     },
 
     sectionTitle: {
-        color: '#fff',
         fontSize: 18,
         fontWeight: '700',
         marginBottom: 16,
@@ -262,25 +279,21 @@ const styles = StyleSheet.create({
     },
     statCard: {
         width: '47%',
-        backgroundColor: '#0b1220',
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#1e293b',
     },
     statIcon: {
         fontSize: 24,
         marginBottom: 8,
     },
     statValue: {
-        color: '#fff',
         fontSize: 24,
         fontWeight: '800',
         marginBottom: 4,
     },
     statLabel: {
-        color: '#64748b',
         fontSize: 12,
         textAlign: 'center',
     },
@@ -290,13 +303,11 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     achievementCard: {
-        backgroundColor: '#0b1220',
         borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#1e293b',
     },
     achievementLocked: {
         opacity: 0.6,
@@ -305,29 +316,21 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#1e293b',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 14,
     },
-    achievementIconLocked: {
-        backgroundColor: '#0f172a',
-    },
+    achievementIconLocked: {},
     achievementInfo: {
         flex: 1,
     },
     achievementTitle: {
-        color: '#fff',
         fontSize: 15,
         fontWeight: '700',
         marginBottom: 2,
     },
     achievementDesc: {
-        color: '#64748b',
         fontSize: 12,
-    },
-    textLocked: {
-        color: '#94a3b8',
     },
     checkmark: {
         color: '#22c55e',
@@ -339,7 +342,6 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     editProfileBtn: {
-        backgroundColor: '#1e3a5f',
         paddingVertical: 16,
         borderRadius: 14,
         alignItems: 'center',
@@ -350,7 +352,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     logoutBtn: {
-        backgroundColor: '#1e1b2e',
         paddingVertical: 16,
         borderRadius: 14,
         alignItems: 'center',

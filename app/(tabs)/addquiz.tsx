@@ -11,11 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { io, Socket } from 'socket.io-client';
-
-// Add Quiz Question Screen (Host)
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function AddQuizQuestionScreen() {
   const router = useRouter();
+  const { isDarkMode, colors } = useTheme();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -32,7 +32,6 @@ export default function AddQuizQuestionScreen() {
   ]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  // Load existing quizzes from server
   useEffect(() => {
     fetchExistingQuizzes();
   }, []);
@@ -47,9 +46,7 @@ export default function AddQuizQuestionScreen() {
     }
   };
 
-  // Connect to socket server
   React.useEffect(() => {
-    console.log('Attempting to connect to socket server...');
     const newSocket = io('https://quizzer-paov.onrender.com', {
       timeout: 5000,
       reconnection: true,
@@ -64,19 +61,13 @@ export default function AddQuizQuestionScreen() {
     });
 
     newSocket.on('quizSaved', (data) => {
-      console.log('Quiz saved successfully:', data);
       Alert.alert('Success', `Quiz saved for room ${data.roomId}!`, [
         { text: 'OK', onPress: () => router.back() }
       ]);
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      Alert.alert('Connection Error', 'Failed to connect to server. Please make sure the server is running.');
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('Disconnected from socket server');
+    newSocket.on('connect_error', () => {
+      Alert.alert('Connection Error', 'Failed to connect to server.');
     });
 
     return () => {
@@ -129,9 +120,6 @@ export default function AddQuizQuestionScreen() {
   };
 
   const handleSave = () => {
-    console.log('Save button pressed');
-
-    // Validate quiz data
     if (!quizTitle.trim()) {
       Alert.alert('Error', 'Please enter a quiz title');
       return;
@@ -142,7 +130,6 @@ export default function AddQuizQuestionScreen() {
       return;
     }
 
-    // Validate each question
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.question.trim()) {
@@ -169,49 +156,71 @@ export default function AddQuizQuestionScreen() {
       }))
     };
 
-    console.log('Attempting to save quiz:', quizData);
-    console.log('Socket connected:', socket?.connected);
-
-    // Save quiz to server
     if (socket && socket.connected) {
-      console.log('Emitting saveQuiz event...');
       socket.emit('saveQuiz', { roomId, quizData });
     } else {
-      console.log('Socket not connected, showing error');
-      Alert.alert('Connection Error', 'Not connected to server. Please check your connection and try again.');
+      Alert.alert('Connection Error', 'Not connected to server.');
     }
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    safe: { flex: 1, backgroundColor: colors.background },
+    back: { ...styles.back, color: isDarkMode ? '#cbd5f5' : colors.primaryText },
+    headerTitle: { ...styles.headerTitle, color: colors.primaryText },
+    sectionLabel: { ...styles.sectionLabel, color: colors.secondaryText },
+    roomInput: { ...styles.roomInput, backgroundColor: colors.cardBg, color: colors.primaryText },
+    questionBox: { ...styles.questionBox, backgroundColor: colors.cardBg },
+    questionInput: { ...styles.questionInput, color: colors.primaryText },
+    mediaBtn: { ...styles.mediaBtn, backgroundColor: isDarkMode ? '#2a243f' : '#e2e8f0' },
+    mediaText: { ...styles.mediaText, color: isDarkMode ? '#cbd5f5' : colors.secondaryText },
+    hint: { ...styles.hint, color: colors.secondaryText },
+    answerCard: { ...styles.answerCard, backgroundColor: colors.cardBg },
+    answerInput: { ...styles.answerInput, color: colors.primaryText },
+    navBtn: { ...styles.navBtn, backgroundColor: colors.cardBg },
+    navBtnText: { ...styles.navBtnText, color: isDarkMode ? '#cbd5f5' : colors.primaryText },
+    questionIndicator: { ...styles.questionIndicator, color: colors.primaryText },
+    timeBtn: { ...styles.timeBtn, backgroundColor: colors.cardBg },
+    timeText: { ...styles.timeText, color: isDarkMode ? '#cbd5f5' : colors.secondaryText },
+    pointsBox: { ...styles.pointsBox, backgroundColor: colors.cardBg },
+    pointsText: { ...styles.pointsText, color: colors.primaryText },
+    toggleIcon: { ...styles.toggleIcon, color: isDarkMode ? '#cbd5f5' : colors.secondaryText },
+    quizItem: { ...styles.quizItem, backgroundColor: colors.cardBg },
+    quizTitle: { ...styles.quizTitle, color: colors.primaryText },
+    quizMeta: { ...styles.quizMeta, color: colors.secondaryText },
+    noQuizzesText: { ...styles.noQuizzesText, color: colors.secondaryText },
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={dynamicStyles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.back}>←</Text>
+            <Text style={dynamicStyles.back}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Quiz</Text>
+          <Text style={dynamicStyles.headerTitle}>Create Quiz</Text>
           <TouchableOpacity onPress={handleSave}>
             <Text style={styles.save}>Save</Text>
           </TouchableOpacity>
         </View>
 
         {/* Quiz Title */}
-        <Text style={styles.sectionLabel}>QUIZ TITLE</Text>
+        <Text style={dynamicStyles.sectionLabel}>QUIZ TITLE</Text>
         <TextInput
-          style={styles.roomInput}
+          style={dynamicStyles.roomInput}
           placeholder="Enter quiz title"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.secondaryText}
           value={quizTitle}
           onChangeText={setQuizTitle}
         />
 
         {/* Room ID */}
-        <Text style={styles.sectionLabel}>ROOM ID</Text>
+        <Text style={dynamicStyles.sectionLabel}>ROOM ID</Text>
         <TextInput
-          style={styles.roomInput}
+          style={dynamicStyles.roomInput}
           placeholder="Assign Room ID"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.secondaryText}
           value={roomId}
           onChangeText={setRoomId}
         />
@@ -222,21 +231,21 @@ export default function AddQuizQuestionScreen() {
             style={styles.existingQuizzesHeader}
             onPress={() => setShowExistingQuizzes(!showExistingQuizzes)}
           >
-            <Text style={styles.sectionLabel}>EXISTING QUIZZES ({existingQuizzes.length})</Text>
-            <Text style={styles.toggleIcon}>{showExistingQuizzes ? '▼' : '▶'}</Text>
+            <Text style={dynamicStyles.sectionLabel}>EXISTING QUIZZES ({existingQuizzes.length})</Text>
+            <Text style={dynamicStyles.toggleIcon}>{showExistingQuizzes ? '▼' : '▶'}</Text>
           </TouchableOpacity>
 
           {showExistingQuizzes && (
             <View style={styles.existingQuizzesList}>
-              {existingQuizzes.map((quiz, index) => (
+              {existingQuizzes.map((quiz) => (
                 <TouchableOpacity
                   key={quiz.id}
-                  style={styles.quizItem}
+                  style={dynamicStyles.quizItem}
                   onPress={() => useExistingQuiz(quiz)}
                 >
                   <View style={styles.quizInfo}>
-                    <Text style={styles.quizTitle}>{quiz.title}</Text>
-                    <Text style={styles.quizMeta}>
+                    <Text style={dynamicStyles.quizTitle}>{quiz.title}</Text>
+                    <Text style={dynamicStyles.quizMeta}>
                       {quiz.category} • {quiz.difficulty} • {quiz.questions.length} questions
                     </Text>
                   </View>
@@ -244,7 +253,7 @@ export default function AddQuizQuestionScreen() {
                 </TouchableOpacity>
               ))}
               {existingQuizzes.length === 0 && (
-                <Text style={styles.noQuizzesText}>No existing quizzes found</Text>
+                <Text style={dynamicStyles.noQuizzesText}>No existing quizzes found</Text>
               )}
             </View>
           )}
@@ -252,22 +261,22 @@ export default function AddQuizQuestionScreen() {
 
         {/* Question Navigation */}
         <View style={styles.questionNav}>
-          <Text style={styles.sectionLabel}>QUESTIONS ({questions.length})</Text>
+          <Text style={dynamicStyles.sectionLabel}>QUESTIONS ({questions.length})</Text>
           <View style={styles.navButtons}>
             <TouchableOpacity
-              style={styles.navBtn}
+              style={dynamicStyles.navBtn}
               onPress={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
               disabled={currentQuestionIndex === 0}
             >
-              <Text style={styles.navBtnText}>←</Text>
+              <Text style={dynamicStyles.navBtnText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.questionIndicator}>Question {currentQuestionIndex + 1}</Text>
+            <Text style={dynamicStyles.questionIndicator}>Question {currentQuestionIndex + 1}</Text>
             <TouchableOpacity
-              style={styles.navBtn}
+              style={dynamicStyles.navBtn}
               onPress={() => setCurrentQuestionIndex(Math.min(questions.length - 1, currentQuestionIndex + 1))}
               disabled={currentQuestionIndex === questions.length - 1}
             >
-              <Text style={styles.navBtnText}>→</Text>
+              <Text style={dynamicStyles.navBtnText}>→</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.actionButtons}>
@@ -283,32 +292,32 @@ export default function AddQuizQuestionScreen() {
         </View>
 
         {/* Question */}
-        <Text style={styles.sectionLabel}>QUESTION</Text>
-        <View style={styles.questionBox}>
+        <Text style={dynamicStyles.sectionLabel}>QUESTION</Text>
+        <View style={dynamicStyles.questionBox}>
           <TextInput
-            style={styles.questionInput}
+            style={dynamicStyles.questionInput}
             placeholder="Type your question here..."
-            placeholderTextColor="#64748b"
+            placeholderTextColor={colors.secondaryText}
             multiline
             value={currentQuestion.question}
             onChangeText={(text) => updateCurrentQuestion('question', text)}
           />
-          <TouchableOpacity style={styles.mediaBtn}>
-            <Text style={styles.mediaText}>🖼 Media</Text>
+          <TouchableOpacity style={dynamicStyles.mediaBtn}>
+            <Text style={dynamicStyles.mediaText}>🖼 Media</Text>
           </TouchableOpacity>
         </View>
 
         {/* Answers */}
         <View style={styles.answersHeader}>
-          <Text style={styles.sectionLabel}>ANSWERS</Text>
-          <Text style={styles.hint}>Select correct answer</Text>
+          <Text style={dynamicStyles.sectionLabel}>ANSWERS</Text>
+          <Text style={dynamicStyles.hint}>Select correct answer</Text>
         </View>
 
         {currentQuestion.answers.map((ans: string, i: number) => (
           <TouchableOpacity
             key={i}
             style={[
-              styles.answerCard,
+              dynamicStyles.answerCard,
               currentQuestion.correctIndex === i && styles.answerSelected,
             ]}
             onPress={() => updateCurrentQuestion('correctIndex', i)}
@@ -322,7 +331,7 @@ export default function AddQuizQuestionScreen() {
                       styles.icon3
               ]} />
               <TextInput
-                style={styles.answerInput}
+                style={dynamicStyles.answerInput}
                 value={ans}
                 onChangeText={(text) => {
                   const newAnswers = [...currentQuestion.answers];
@@ -330,27 +339,27 @@ export default function AddQuizQuestionScreen() {
                   updateCurrentQuestion('answers', newAnswers);
                 }}
                 placeholder="Enter answer"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.secondaryText}
               />
             </View>
           </TouchableOpacity>
         ))}
 
         {/* Time Limit */}
-        <Text style={styles.sectionLabel}>TIME LIMIT</Text>
+        <Text style={dynamicStyles.sectionLabel}>TIME LIMIT</Text>
         <View style={styles.timeRow}>
           {[10, 20, 30, 60].map((t) => (
             <TouchableOpacity
               key={t}
               style={[
-                styles.timeBtn,
+                dynamicStyles.timeBtn,
                 currentQuestion.timeLimit === t && styles.timeSelected,
               ]}
               onPress={() => updateCurrentQuestion('timeLimit', t)}
             >
               <Text
                 style={[
-                  styles.timeText,
+                  dynamicStyles.timeText,
                   currentQuestion.timeLimit === t && styles.timeTextActive,
                 ]}
               >
@@ -361,9 +370,9 @@ export default function AddQuizQuestionScreen() {
         </View>
 
         {/* Points */}
-        <Text style={styles.sectionLabel}>POINTS</Text>
-        <View style={styles.pointsBox}>
-          <Text style={styles.pointsText}>Standard (1k)</Text>
+        <Text style={dynamicStyles.sectionLabel}>POINTS</Text>
+        <View style={dynamicStyles.pointsBox}>
+          <Text style={dynamicStyles.pointsText}>Standard (1k)</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -371,7 +380,6 @@ export default function AddQuizQuestionScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0b0614' },
   container: { padding: 20 },
 
   header: {
@@ -380,43 +388,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  back: { color: '#cbd5f5', fontSize: 18 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  back: { fontSize: 18 },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
   save: { color: '#a855f7', fontWeight: '700' },
 
   sectionLabel: {
-    color: '#94a3b8',
     fontSize: 12,
     marginBottom: 8,
     marginTop: 16,
   },
 
   roomInput: {
-    backgroundColor: '#1e1b2e',
     borderRadius: 14,
     padding: 14,
-    color: '#fff',
   },
 
   questionBox: {
-    backgroundColor: '#1e1b2e',
     borderRadius: 16,
     padding: 14,
   },
   questionInput: {
-    color: '#fff',
     minHeight: 80,
     textAlignVertical: 'top',
   },
   mediaBtn: {
     alignSelf: 'flex-end',
     marginTop: 10,
-    backgroundColor: '#2a243f',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  mediaText: { color: '#cbd5f5', fontSize: 12 },
+  mediaText: { fontSize: 12 },
 
   answersHeader: {
     flexDirection: 'row',
@@ -425,10 +427,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
-  hint: { color: '#64748b', fontSize: 12 },
+  hint: { fontSize: 12 },
 
   answerCard: {
-    backgroundColor: '#1e1b2e',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -453,24 +454,10 @@ const styles = StyleSheet.create({
   icon2: { backgroundColor: '#eab308' },
   icon3: { backgroundColor: '#22c55e' },
 
-  answerText: { color: '#fff' },
   answerInput: {
-    color: '#fff',
     flex: 1,
     fontSize: 14,
     padding: 0,
-  },
-
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: '#475569',
-  },
-  radioActive: {
-    borderColor: '#22c55e',
-    backgroundColor: '#22c55e',
   },
 
   timeRow: { flexDirection: 'row', gap: 10 },
@@ -478,22 +465,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#1e1b2e',
     alignItems: 'center',
   },
   timeSelected: { backgroundColor: '#6d28d9' },
-  timeText: { color: '#cbd5f5' },
+  timeText: {},
   timeTextActive: { color: '#fff', fontWeight: '700' },
 
   pointsBox: {
-    backgroundColor: '#1e1b2e',
     borderRadius: 14,
     padding: 14,
     marginTop: 4,
   },
-  pointsText: { color: '#fff', fontWeight: '600' },
+  pointsText: { fontWeight: '600' },
 
-  // Question navigation styles
   questionNav: {
     marginBottom: 20,
   },
@@ -507,13 +491,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1e1b2e',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navBtnText: { color: '#cbd5f5', fontSize: 16 },
+  navBtnText: { fontSize: 16 },
   questionIndicator: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600'
   },
@@ -538,7 +520,6 @@ const styles = StyleSheet.create({
   },
   deleteQuestionText: { color: '#fff', fontWeight: '600' },
 
-  // Existing quizzes styles
   existingQuizzesSection: {
     marginBottom: 20,
   },
@@ -548,14 +529,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleIcon: {
-    color: '#cbd5f5',
     fontSize: 16,
   },
   existingQuizzesList: {
     marginTop: 10,
   },
   quizItem: {
-    backgroundColor: '#1e1b2e',
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
@@ -567,13 +546,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quizTitle: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
   quizMeta: {
-    color: '#94a3b8',
     fontSize: 12,
   },
   useQuizBtn: {
@@ -582,7 +559,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   noQuizzesText: {
-    color: '#64748b',
     fontSize: 14,
     textAlign: 'center',
     fontStyle: 'italic',
