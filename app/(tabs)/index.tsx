@@ -8,7 +8,7 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -27,6 +27,7 @@ export default function LiveQuizHomeScreen() {
   const router = useRouter();
   const { username } = useUser();
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [pin, setPin] = useState<string[]>(['', '', '', '', '', '']);
   const inputs = useRef<Array<TextInput | null>>(Array(6).fill(null));
 
@@ -90,7 +91,7 @@ export default function LiveQuizHomeScreen() {
     quizCodeText: { ...styles.quizCodeText, color: colors.accentLight },
     quizQuestionCount: { ...styles.quizQuestionCount, color: colors.secondaryText },
     joinQuizBtn: { ...styles.joinQuizBtn, backgroundColor: colors.accent },
-    bottomBar: { ...styles.bottomBar, backgroundColor: isDarkMode ? '#071425' : '#ffffff', shadowColor: isDarkMode ? '#000' : '#94a3b8' },
+    bottomBar: { ...styles.bottomBar, backgroundColor: isDarkMode ? '#071425' : '#ffffff', shadowColor: isDarkMode ? '#000' : '#94a3b8', bottom: 18 + insets.bottom },
     navLabel: { ...styles.navLabel, color: colors.secondaryText },
   };
 
@@ -323,7 +324,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     right: 14,
-    bottom: 18,
     height: 70,
     borderRadius: 20,
     flexDirection: 'row',

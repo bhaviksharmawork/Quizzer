@@ -9,26 +9,27 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUser } from '@/contexts/UserContext';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { setUsername } = useUser();
 
   const handleLogin = async () => {
-    if (!username.trim()) {
+    if (!usernameInput.trim()) {
       Alert.alert('Error', 'Please enter your username');
       return;
     }
 
-    console.log('🔐 LOGIN PAGE - Attempting to login with username:', username.trim());
+    console.log('🔐 LOGIN PAGE - Attempting to login with username:', usernameInput.trim());
     setLoading(true);
 
     try {
-      // Save username to AsyncStorage for persistence
-      await AsyncStorage.setItem('username', username.trim());
-      console.log('🔐 LOGIN PAGE - Username saved to AsyncStorage');
+      // Save username using UserContext (this updates both AsyncStorage AND context state)
+      await setUsername(usernameInput.trim());
+      console.log('🔐 LOGIN PAGE - Username saved via UserContext');
 
       // Navigate to home page (replace to prevent going back to login)
       console.log('🔐 LOGIN PAGE - Navigating to /(tabs)');
@@ -56,8 +57,8 @@ export default function LoginScreen() {
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              value={username}
-              onChangeText={setUsername}
+              value={usernameInput}
+              onChangeText={setUsernameInput}
               placeholder="Enter your username"
               placeholderTextColor="#94a3b8"
               autoCapitalize="words"
